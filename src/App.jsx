@@ -81,14 +81,16 @@ function App() {
       if (window.OneSignalInitialized) return;
 
       try {
-        await OneSignal.init({
-          appId: "42e5b71c-8a96-40c9-88c7-7268b2fe54e8",
-          allowLocalhostAsSecureOrigin: true,
-          serviceWorkerParam: { scope: '/' },
-          serviceWorkerPath: '/OneSignalSDKWorker.js',
-          // Disable built-in button so we use our Sidebar/Overview buttons
-          notifyButton: { enable: false }, 
-        });
+       await OneSignal.init({
+  appId: "42e5b71c-8a96-40c9-88c7-7268b2fe54e8",
+  allowLocalhostAsSecureOrigin: true,
+  serviceWorkerPath: "/OneSignalSDKWorker.js",
+  // 🚩 ADD THIS: Forces the worker to stay in the root scope
+  serviceWorkerParam: { scope: "/" }, 
+  // 🚩 ADD THIS: Tells OneSignal to ignore the "ghost" worker and start fresh
+  outboundFullUpdate: true, 
+  notifyButton: { enable: false }, 
+});
         
         window.OneSignalInitialized = true;
         console.log("🔔 OneSignal: Service Initialized");
