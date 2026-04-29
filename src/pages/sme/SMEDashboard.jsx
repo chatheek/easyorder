@@ -102,43 +102,41 @@ export default function SMEDashboard({ installButton }) {
   // --- 🔔 ONESIGNAL LOGIC ---
 // --- 🔔 ONESIGNAL PUSH NOTIFICATION LOGIC ---
 // --- 🔔 ONESIGNAL PUSH NOTIFICATION LOGIC ---
-useEffect(() => {
-  if (!bizData?.id) return;
+  useEffect(() => {
+    if (!bizData?.id) return;
 
-  const OneSignal = window.OneSignal || [];
+    // 🚩 CHANGE THIS LINE: Support both the array and the initialized object
+    const OneSignal = window.OneSignal || [];
 
-  OneSignal.push(async () => {
-    try {
-      // 1. Sync identity
-      await OneSignal.login(bizData.id);
-      
-      let attempts = 0;
-
-      // Define function first
-      const checkBridge = async () => {
-        const pushId = OneSignal.User.PushSubscription.id;
+    // 🚩 WRAP THE PUSH: Only call .push if it's the loading array
+    const runLogic = async () => {
+      try {
+        await OneSignal.login(bizData.id);
         
-        if (pushId) {
-          console.log("✅ [CP 5] Bridge Open! Syncing Tags...");
-          await OneSignal.User.addTag("business_id", bizData.id);
-          setIsSubscribed(true);
-        } else if (attempts < 10) {
-          attempts++;
-          console.log(`⏳ [CP 5.1] Bridge pending (Attempt ${attempts})...`);
-          setTimeout(checkBridge, 2000);
-        } else {
-          console.error("❌ [CP 6] Bridge Timeout: Verify Service-Worker-Allowed header.");
-        }
-      };
+        let attempts = 0;
+        const checkBridge = async () => {
+          const pushId = OneSignal.User.PushSubscription.id;
+          if (pushId) {
+            console.log("✅ [CP 5] Bridge Open! Syncing Tags...");
+            await OneSignal.User.addTag("business_id", bizData.id);
+            setIsSubscribed(true);
+          } else if (attempts < 10) {
+            attempts++;
+            setTimeout(checkBridge, 2000);
+          }
+        };
+        checkBridge();
+      } catch (err) {
+        console.error("Sync Error:", err);
+      }
+    };
 
-      // Now call it
-      checkBridge();
-      
-    } catch (err) {
-      console.error("Sync Error:", err);
+    if (Array.isArray(OneSignal)) {
+      OneSignal.push(runLogic);
+    } else {
+      runLogic();
     }
-  });
-}, [bizData?.id]);
+  }, [bizData?.id]);
 
 
 
