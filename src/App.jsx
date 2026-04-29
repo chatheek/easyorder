@@ -85,11 +85,9 @@ function App() {
   appId: "42e5b71c-8a96-40c9-88c7-7268b2fe54e8",
   allowLocalhostAsSecureOrigin: true,
   serviceWorkerPath: "/OneSignalSDKWorker.js",
-  // 🚩 ADD THIS: Forces the worker to stay in the root scope
+  // 🚩 THIS LINE IS THE FIX
   serviceWorkerParam: { scope: "/" }, 
-  // 🚩 ADD THIS: Tells OneSignal to ignore the "ghost" worker and start fresh
-  outboundFullUpdate: true, 
-  notifyButton: { enable: false }, 
+  notifyButton: { enable: false },
 });
         
         window.OneSignalInitialized = true;
