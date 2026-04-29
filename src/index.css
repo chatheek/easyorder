@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+/* Keep your custom styles below */
+input, textarea {
+  @apply transition-all duration-200;
+}

@@ -1,0 +1,22 @@
+{
+  "headers": [
+    {
+      "source": "/OneSignalSDKWorker-v3.js",
+      "headers": [
+        { "key": "Content-Type", "value": "application/javascript" },
+        { "key": "Service-Worker-Allowed", "value": "/" },
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/OneSignalSDKWorker-v3.js",
+      "destination": "/OneSignalSDKWorker-v3.js"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

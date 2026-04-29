@@ -1,0 +1,286 @@
+-- 1. Create a table for User Profiles
+CREATE TABLE profiles (
+  id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
+  email TEXT UNIQUE,
+  role TEXT CHECK (role IN ('dev', 'admin', 'client')) DEFAULT 'client'
+);
+
+-- 2. Create a table for Businesses
+CREATE TABLE businesses (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  admin_id UUID REFERENCES profiles(id),
+  name TEXT NOT NULL,
+  logo_url TEXT,
+  address TEXT,
+  reg_no TEXT,
+  whatsapp TEXT,
+  contact_person TEXT,
+  business_type TEXT CHECK (business_type IN ('service', 'product', 'both')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+);
+
+-- 3. Trigger to create a profile record when a new user signs up
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, role)
+  VALUES (new.id, new.email, 'admin'); -- Default for auto-signed up users
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+  -- First, ensure the profile exists and has the 'dev' role
+-- Note: You must first sign up/create this user in the Auth tab of Supabase
+UPDATE public.profiles 
+SET role = 'dev' 
+WHERE email = 'easyorder_dev@gmail.com';
+
+ALTER TABLE businesses 
+ADD COLUMN IF NOT EXISTS address TEXT,
+ADD COLUMN IF NOT EXISTS reg_no TEXT,
+ADD COLUMN IF NOT EXISTS contact_person TEXT,
+ADD COLUMN IF NOT EXISTS logo_url TEXT;
+
+
+-- 1. Create the bucket
+insert into storage.buckets (id, name, public) 
+values ('business-logos', 'business-logos', true);
+
+-- 2. Policy: Allow the Dev to upload logos
+create policy "Devs can upload logos"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'business-logos' AND 
+  (select role from public.profiles where id = auth.uid()) = 'dev'
+);
+
+-- 3. Policy: Allow everyone to view logos (Public)
+create policy "Public Access to Logos"
+on storage.objects for select
+to public
+using ( bucket_id = 'business-logos' );
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, role)
+  VALUES (
+    new.id, 
+    new.email, 
+    COALESCE(new.raw_user_meta_data->>'role', 'admin') -- Takes 'admin' from metadata
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+ALTER TABLE businesses 
+ADD COLUMN IF NOT EXISTS monthly_subscription TEXT DEFAULT 'N/A',
+ADD COLUMN IF NOT EXISTS subscription_start_date TEXT DEFAULT 'N/A',
+ADD COLUMN IF NOT EXISTS total_due TEXT DEFAULT 'N/A',
+ADD COLUMN IF NOT EXISTS next_payment_date TEXT DEFAULT 'N/A';
+
+ALTER TABLE businesses 
+ADD COLUMN IF NOT EXISTS is_paused BOOLEAN DEFAULT false;
+
+ALTER TABLE businesses 
+ADD COLUMN IF NOT EXISTS address TEXT,
+ADD COLUMN IF NOT EXISTS contact_person TEXT,
+ADD COLUMN IF NOT EXISTS is_paused BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS monthly_subscription TEXT DEFAULT 'N/A',
+ADD COLUMN IF NOT EXISTS subscription_start_date TEXT DEFAULT 'N/A',
+ADD COLUMN IF NOT EXISTS total_due TEXT DEFAULT 'N/A',
+ADD COLUMN IF NOT EXISTS next_payment_date TEXT DEFAULT 'N/A';
+
+ALTER TABLE businesses 
+ADD COLUMN IF NOT EXISTS remarks TEXT DEFAULT 'N/A';
+
+-- Run this if you get an empty result even with correct info
+CREATE POLICY "Allow email verification" 
+ON public.businesses 
+FOR SELECT 
+USING (true);
+
+-- This allows the login page to check if the user exists
+CREATE POLICY "Enable read for login" 
+ON public.businesses 
+FOR SELECT 
+USING (true);
+
+-- This policy allows the login check to work
+-- It enables anyone to SELECT from the businesses table
+DROP POLICY IF EXISTS "Allow public read for login" ON public.businesses;
+
+CREATE POLICY "Allow public read for login" 
+ON public.businesses 
+FOR SELECT 
+USING (true);
+
+ALTER TABLE public.businesses 
+ADD COLUMN email TEXT;
+
+-- Enable the login check policy for this new column
+DROP POLICY IF EXISTS "Enable read for login" ON public.businesses;
+CREATE POLICY "Enable read for login" 
+ON public.businesses 
+FOR SELECT 
+USING (true);
+
+-- Alternatively, run this in the SQL Editor to allow authenticated SMEs to upload
+CREATE POLICY "Allow SME Uploads" 
+ON storage.objects 
+FOR INSERT 
+TO authenticated 
+WITH CHECK (bucket_id = 'business-logos');
+
+CREATE POLICY "Allow SME Uploads" 
+ON storage.objects FOR INSERT 
+TO authenticated 
+WITH CHECK (bucket_id = 'business-logos');
+
+
+===
+
+-- 1. Create the Main Products Table
+CREATE TABLE public.products (
+    id uuid NOT NULL DEFAULT gen_random_uuid(),
+    business_id uuid NOT NULL,
+    name text NOT NULL,
+    description text,
+    unit_price numeric DEFAULT 0,
+    available_stock integer DEFAULT 0,
+    stock_status text DEFAULT 'in_stock'::text,
+    remarks text,
+    images text[] DEFAULT '{}'::text[], -- Array for up to 5 URLs
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+    
+    CONSTRAINT products_pkey PRIMARY KEY (id),
+    CONSTRAINT products_business_id_fkey FOREIGN KEY (business_id) REFERENCES public.businesses(id) ON DELETE CASCADE
+);
+
+-- 2. Create the Variations Table (Name only, relational for filtering)
+CREATE TABLE public.product_variations (
+    id uuid NOT NULL DEFAULT gen_random_uuid(),
+    product_id uuid NOT NULL,
+    variation_name text NOT NULL, -- e.g., 'Red', 'XL', '1TB'
+    
+    CONSTRAINT product_variations_pkey PRIMARY KEY (id),
+    CONSTRAINT product_variations_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE CASCADE
+);
+
+-- 3. Enable Row Level Security (RLS)
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.product_variations ENABLE ROW LEVEL SECURITY;
+
+-- 4. Create Access Policies (Admins only see their own business data)
+CREATE POLICY "Admins can manage their own products" 
+ON public.products 
+FOR ALL 
+USING (
+  business_id IN (
+    SELECT id FROM businesses WHERE admin_id = auth.uid()
+  )
+);
+
+CREATE POLICY "Admins can manage their own variations" 
+ON public.product_variations 
+FOR ALL 
+USING (
+  product_id IN (
+    SELECT id FROM products WHERE business_id IN (
+      SELECT id FROM businesses WHERE admin_id = auth.uid()
+    )
+  )
+);
+
+
+
+=================
+===================
+-- Drop and recreate to ensure clean schema
+DROP TABLE IF EXISTS public.product_variations;
+DROP TABLE IF EXISTS public.products;
+
+CREATE TABLE public.products (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    business_id uuid REFERENCES public.businesses(id) ON DELETE CASCADE,
+    manual_id text, -- Not mandatory
+    name text NOT NULL, -- Mandatory
+    description text,
+    unit_price numeric NOT NULL DEFAULT 0, -- Mandatory
+    available_stock int DEFAULT 0,
+    stock_status text DEFAULT 'in_stock', -- Toggle field
+    remarks text,
+    images text[] DEFAULT '{}', -- Array for 5 images
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+);
+
+CREATE TABLE public.product_variations (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    product_id uuid REFERENCES public.products(id) ON DELETE CASCADE,
+    variation_name text NOT NULL
+);
+
+-- REFRESH CACHE: Run this if the error persists
+NOTIFY pgrst, 'reload schema';
+
+
+===========
+
+
+-- 1. Regular Operating Hours (Weekly)
+CREATE TABLE public.business_hours (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    business_id uuid REFERENCES public.businesses(id) ON DELETE CASCADE,
+    day_of_week int NOT NULL, -- 0 (Sunday) to 6 (Saturday)
+    open_time time NOT NULL,
+    close_time time NOT NULL,
+    UNIQUE(business_id, day_of_week, open_time)
+);
+
+-- 2. Exceptions (Specific Dates)
+CREATE TABLE public.business_exceptions (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    business_id uuid REFERENCES public.businesses(id) ON DELETE CASCADE,
+    exception_date date NOT NULL,
+    is_closed_all_day boolean DEFAULT false,
+    closed_from time,
+    closed_until time,
+    reason text
+);
+
+-- 3. Auto-Cleanup Function (Deletes past exceptions)
+CREATE OR REPLACE FUNCTION delete_past_exceptions() 
+RETURNS void AS $$
+BEGIN
+    DELETE FROM public.business_exceptions WHERE exception_date < CURRENT_DATE;
+END;
+$$ LANGUAGE plpgsql;
+
+
+======
+
+
+CREATE TABLE public.orders (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  business_id uuid REFERENCES public.businesses(id),
+  customer_name text NOT NULL,
+  customer_whatsapp text NOT NULL,
+  customer_address text NOT NULL,
+  customer_remarks text,
+  other_contact text,
+  items jsonb NOT NULL, -- Stores the array of cart items
+  total_amount numeric NOT NULL,
+  status text DEFAULT 'pending', -- pending, confirmed, delivered, cancelled
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT orders_pkey PRIMARY KEY (id)
+);
+
+ALTER TABLE public.orders 
+ADD COLUMN IF NOT EXISTS is_favourite boolean DEFAULT false,
+ADD COLUMN IF NOT EXISTS internal_remarks text DEFAULT '',
+ADD COLUMN IF NOT EXISTS status_message text DEFAULT '';
