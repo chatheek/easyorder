@@ -139,12 +139,13 @@ useEffect(() => {
 // 🚩 KEEP ONLY THIS VERSION
 const handleEnableNotifications = () => {
   const OS = window.OneSignal;
-  if (OS) {
-    if (Array.isArray(OS)) {
-      OS.push(() => OS.Notifications.requestPermission());
-    } else {
-      OS.Notifications.requestPermission();
-    }
+  if (OS && !Array.isArray(OS)) {
+    // Only call if OneSignal is fully initialized and NOT an array
+    OS.Notifications.requestPermission().catch(err => {
+       console.error("Permission request failed:", err);
+    });
+  } else {
+    console.warn("OneSignal is still loading, please wait...");
   }
 };
 
