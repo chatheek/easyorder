@@ -86,13 +86,14 @@ function App() {
       }
 
       try {
-        await OneSignal.init({
-          appId: "42e5b71c-8a96-40c9-88c7-7268b2fe54e8",
-          allowLocalhostAsSecureOrigin: true,
-          serviceWorkerPath: "/OneSignalSDKWorker.js",
-          serviceWorkerParam: { scope: "/" }, 
-          notifyButton: { enable: false },
-        });
+      await OneSignal.init({
+  appId: "42e5b71c-8a96-40c9-88c7-7268b2fe54e8",
+  allowLocalhostAsSecureOrigin: true,
+  // 🚩 Append ?v=1 to force a fresh download
+  serviceWorkerPath: "/OneSignalSDKWorker.js?v=1", 
+  serviceWorkerParam: { scope: "/" }, 
+  notifyButton: { enable: false },
+});
         
         window.OneSignal = OneSignal;
         window.OneSignalInitialized = true;
