@@ -107,90 +107,34 @@ useEffect(() => {
   const OneSignal = window.OneSignal || [];
 
   OneSignal.push(async () => {
-    console.log("🚩 [CP 1] OneSignal Logic Start");
     try {
-      // 1. AVOID CRASH: Only init if not already initialized
-      if (OneSignal.initialized) {
-        console.log("🚩 [CP 2] SDK already initialized, skipping init.");
-      } else {
-        console.log("🚩 [CP 2] Initializing SDK...");
-        await OneSignal.init({
-  appId: "42e5b71c-8a96-40c9-88c7-7268b2fe54e8",
-  allowLocalhostAsSecureOrigin: true,
-  serviceWorkerPath: "/OneSignalSDKWorker.js",
-  // 🚩 ADD THIS: Forces the worker to stay in the root scope
-  serviceWorkerParam: { scope: "/" }, 
-  // 🚩 ADD THIS: Tells OneSignal to ignore the "ghost" worker and start fresh
-  outboundFullUpdate: true, 
-  notifyButton: { enable: false }, 
-});
-      }
-
-      // 2. CHECK PERMISSION
-      const permission = await OneSignal.Notifications.permission;
-      console.log("🚩 [CP 3] Permission status:", permission);
-      setIsSubscribed(permission === 'granted');
-
-      // 3. ATTEMPT SYNC
-    const syncUser = async () => {
-  console.log("🚩 [CP 4] Bridge Check Started...");
-  try {
-    // Force a login to trigger the handshake
-    await OneSignal.login(bizData.id);
-
-    let attempts = 0;
-    const checkBridge = async () => {
-      // The pushId only populates when the postMessage bridge is successful
-      const pushId = OneSignal.User.PushSubscription.id;
+      // 1. Just sync identity, don't re-init here
+      await OneSignal.login(bizData.id);
       
-      if (pushId) {
-        console.log("✅ [CP 5] Bridge Open! ID:", pushId);
-        await OneSignal.User.addTag("business_id", bizData.id);
+      let attempts = 0;
+      const checkBridge = async () => {
+        // This is the "magic" property. If this is null, the bridge is closed.
+        const pushId = OneSignal.User.PushSubscription.id;
         
-        // Final verification
-        const tags = await OneSignal.User.getTags();
-        if (tags?.business_id) {
-          console.log("🎊 SUCCESS: Desktop Identity Synced!");
+        if (pushId) {
+          console.log("✅ [CP 5] Bridge Open! Syncing Tags...");
+          await OneSignal.User.addTag("business_id", bizData.id);
           setIsSubscribed(true);
+        } else if (attempts < 10) {
+          attempts++;
+          console.log(`⏳ [CP 5.1] Bridge pending (Attempt ${attempts})...`);
+          setTimeout(checkBridge, 2000);
+        } else {
+          console.error("❌ [CP 6] Bridge Timeout: Verify Service-Worker-Allowed header.");
         }
-      } else if (attempts < 8) {
-        attempts++;
-        console.log(`⏳ [CP 5.1] Bridge blocked by browser (Attempt ${attempts})...`);
-        // If this keeps failing, the 'Service-Worker-Allowed' header is definitely missing
-        setTimeout(checkBridge, 2000);
-      } else {
-        console.error("❌ [CP 6] Bridge Timeout. Please check if Service-Worker-Allowed header is live.");
-      }
-    };
+      };
 
-    checkBridge();
-  } catch (err) {
-    console.error("Sync Error:", err);
-  }
-};
-
-      if (permission === 'granted') {
-        // Wait 2 seconds for the "sw.ts:21" evaluation warning to pass
-        setTimeout(syncUser, 2000);
-      }
-
-      OneSignal.Notifications.addEventListener("permissionChange", async (granted) => {
-        console.log("🔄 Permission Change Event:", granted);
-        setIsSubscribed(granted);
-        if (granted) setTimeout(syncUser, 2000);
-      });
-
+      checkBridge();
     } catch (err) {
-      // This catches the "Already Initialized" error if my check fails
-      if (!err.message?.includes("already initialized")) {
-        console.error("🚩 OneSignal Setup Error:", err);
-      } else {
-        console.log("🚩 Prevented Duplicate Init Crash.");
-      }
+      console.error("Sync Error:", err);
     }
   });
 }, [bizData?.id]);
-
   const handleEnableNotifications = () => {
     if (window.OneSignal) {
       window.OneSignal.push(() => {
