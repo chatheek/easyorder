@@ -108,7 +108,6 @@ useEffect(() => {
 
   const runSyncLogic = async () => {
     try {
-      // 1. Identity Sync
       await OneSignal.login(bizData.id);
       
       let attempts = 0;
@@ -130,7 +129,6 @@ useEffect(() => {
     }
   };
 
-  // 🚩 The Fix: Only call .push if it's actually an array
   if (Array.isArray(OneSignal)) {
     OneSignal.push(runSyncLogic);
   } else {
@@ -138,7 +136,7 @@ useEffect(() => {
   }
 }, [bizData?.id]);
 
-// 🚩 Update your button handler too
+// 🚩 KEEP ONLY THIS VERSION
 const handleEnableNotifications = () => {
   const OS = window.OneSignal;
   if (OS) {
@@ -151,14 +149,6 @@ const handleEnableNotifications = () => {
 };
 
 
-
-  const handleEnableNotifications = () => {
-    if (window.OneSignal) {
-      window.OneSignal.push(() => {
-        window.OneSignal.Notifications.requestPermission();
-      });
-    }
-  };
 
   useEffect(() => { 
     fetchMyBusiness(); 
