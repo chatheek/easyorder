@@ -85,7 +85,7 @@ function App() {
           appId: "42e5b71c-8a96-40c9-88c7-7268b2fe54e8",
           allowLocalhostAsSecureOrigin: true,
           serviceWorkerParam: { scope: '/' },
-          serviceWorkerPath: 'OneSignalSDKWorker.js',
+          serviceWorkerPath: '/OneSignalSDKWorker-v3.js',
           // Disable built-in button so we use our Sidebar/Overview buttons
           notifyButton: { enable: false }, 
         });

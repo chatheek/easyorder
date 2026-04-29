@@ -117,7 +117,7 @@ useEffect(() => {
         await OneSignal.init({
           appId: "42e5b71c-8a96-40c9-88c7-7268b2fe54e8",
           allowLocalhostAsSecureOrigin: true,
-          serviceWorkerPath: "OneSignalSDKWorker-v3.js",
+          serviceWorkerPath: "/OneSignalSDKWorker-v3.js",
           serviceWorkerParam: { scope: "/" }
         });
       }
