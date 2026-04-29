@@ -77,8 +77,13 @@ function App() {
     }
 
     // 4. ONESIGNAL INITIALIZATION
+  // 4. ONESIGNAL INITIALIZATION
     const initOneSignal = async () => {
-      if (window.OneSignalInitialized) return;
+      console.log("🔔 [Init 1] Starting OneSignal Setup...");
+      if (window.OneSignalInitialized) {
+        console.log("🔔 [Init 1.1] Already initialized, skipping.");
+        return;
+      }
 
       try {
         await OneSignal.init({
@@ -89,14 +94,11 @@ function App() {
           notifyButton: { enable: false },
         });
         
-        // 🚩 ADD THIS LINE: Exposes the instance to window for SMEDashboard
         window.OneSignal = OneSignal;
-        
         window.OneSignalInitialized = true;
-        console.log("🔔 OneSignal: Service Initialized");
+        console.log("🔔 [Init 2] OneSignal successfully bound to window.");
       } catch (error) {
-        if (error.message?.includes("already initialized")) return;
-        console.error("OneSignal Error:", error);
+        console.error("❌ [Init Error] OneSignal failed to start:", error);
       }
     };
 

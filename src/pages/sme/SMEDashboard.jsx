@@ -102,58 +102,68 @@ export default function SMEDashboard({ installButton }) {
   // --- 🔔 ONESIGNAL LOGIC ---
 // --- 🔔 ONESIGNAL PUSH NOTIFICATION LOGIC ---
 useEffect(() => {
+  console.log("🔄 [Bridge 1] UseEffect Triggered. BizData ID:", bizData?.id);
   if (!bizData?.id) return;
 
-  const OneSignal = window.OneSignal || [];
+  const OS = window.OneSignal || [];
 
   const runSyncLogic = async () => {
     try {
-      await OneSignal.login(bizData.id);
+      console.log("🔄 [Bridge 2] Running Sync Logic. Calling Login...");
+      await OS.login(bizData.id);
+      console.log("🔄 [Bridge 3] Login successful for:", bizData.id);
       
       let attempts = 0;
       const checkBridge = async () => {
-        const pushId = OneSignal.User.PushSubscription.id;
+        console.log(`🔄 [Bridge 4] Checking Subscription state (Attempt ${attempts})...`);
+        
+        // Detailed log of the User object
+        console.log("🔄 [Bridge 4.1] Current User Object:", OS.User);
+
+        const pushId = OS.User?.PushSubscription?.id;
         
         if (pushId) {
-          console.log("✅ [CP 5] Bridge Open! Syncing Tags...");
-          await OneSignal.User.addTag("business_id", bizData.id);
+          console.log("✅ [Bridge 5] SUCCESS: Bridge Open! Push ID:", pushId);
+          await OS.User.addTag("business_id", bizData.id);
+          console.log("✅ [Bridge 6] Tag synced successfully.");
           setIsSubscribed(true);
         } else if (attempts < 10) {
           attempts++;
           setTimeout(checkBridge, 2000);
+        } else {
+          console.error("❌ [Bridge 7] TIMEOUT: No Push ID found. Check Service Worker tab.");
         }
       };
       checkBridge();
     } catch (err) {
-      console.error("Sync Error:", err);
+      console.error("❌ [Bridge Error] Sync failed:", err);
     }
   };
 
-  if (Array.isArray(OneSignal)) {
-    OneSignal.push(runSyncLogic);
+  if (Array.isArray(OS)) {
+    console.log("🔄 [Bridge 1.1] OS is an Array. Pushing logic to queue...");
+    OS.push(runSyncLogic);
   } else {
+    console.log("🔄 [Bridge 1.2] OS is already initialized. Running logic immediately.");
     runSyncLogic();
   }
 }, [bizData?.id]);
 
-// 🚩 KEEP ONLY THIS VERSION
 const handleEnableNotifications = async () => {
+  console.log("🖱️ [Click] Enable Notifications button clicked.");
   const OS = window.OneSignal;
-  if (!OS || Array.isArray(OS)) {
-    console.warn("OneSignal not ready yet.");
+  
+  if (!OS || Array.isArray(OS) || !OS.Notifications) {
+    console.error("❌ [Click Error] OneSignal object is hollow or missing Notifications namespace.");
     return;
   }
 
   try {
-    // Check if the Notifications namespace actually exists
-    if (OS.Notifications) {
-      await OS.Notifications.requestPermission();
-    } else {
-      console.error("Notification system failed to load. Check Service Worker status.");
-      alert("Notification system is initializing. Please refresh in 5 seconds.");
-    }
+    console.log("🖱️ [Click 2] Requesting Permission...");
+    await OS.Notifications.requestPermission();
+    console.log("🖱️ [Click 3] Permission request triggered.");
   } catch (err) {
-    console.error("Permission request failed:", err);
+    console.error("❌ [Click Error] Permission request crashed:", err);
   }
 };
 
