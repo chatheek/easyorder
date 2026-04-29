@@ -137,15 +137,23 @@ useEffect(() => {
 }, [bizData?.id]);
 
 // 🚩 KEEP ONLY THIS VERSION
-const handleEnableNotifications = () => {
+const handleEnableNotifications = async () => {
   const OS = window.OneSignal;
-  if (OS && !Array.isArray(OS)) {
-    // Only call if OneSignal is fully initialized and NOT an array
-    OS.Notifications.requestPermission().catch(err => {
-       console.error("Permission request failed:", err);
-    });
-  } else {
-    console.warn("OneSignal is still loading, please wait...");
+  if (!OS || Array.isArray(OS)) {
+    console.warn("OneSignal not ready yet.");
+    return;
+  }
+
+  try {
+    // Check if the Notifications namespace actually exists
+    if (OS.Notifications) {
+      await OS.Notifications.requestPermission();
+    } else {
+      console.error("Notification system failed to load. Check Service Worker status.");
+      alert("Notification system is initializing. Please refresh in 5 seconds.");
+    }
+  } catch (err) {
+    console.error("Permission request failed:", err);
   }
 };
 
