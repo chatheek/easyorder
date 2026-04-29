@@ -1,15 +1,5 @@
 {
   "version": 2,
-  "rewrites": [
-    {
-      "source": "/OneSignalSDKWorker-v3.js",
-      "destination": "/OneSignalSDKWorker-v3.js"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ],
   "headers": [
     {
       "source": "/OneSignalSDKWorker-v3.js",
@@ -18,5 +8,9 @@
         { "key": "Service-Worker-Allowed", "value": "/" }
       ]
     }
+  ],
+  "rewrites": [
+    { "source": "/OneSignalSDKWorker-v3.js", "destination": "/OneSignalSDKWorker-v3.js" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
