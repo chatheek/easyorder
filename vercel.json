@@ -1,4 +1,5 @@
 {
+  "cleanUrls": true,
   "headers": [
     {
       "source": "/OneSignalSDKWorker-v3.js",
@@ -10,7 +11,13 @@
     }
   ],
   "rewrites": [
-    { "source": "/OneSignalSDKWorker-v3.js", "destination": "/OneSignalSDKWorker-v3.js" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { 
+      "source": "/OneSignalSDKWorker-v3.js", 
+      "destination": "/OneSignalSDKWorker-v3.js" 
+    },
+    { 
+      "source": "/(.*)", 
+      "destination": "/index.html" 
+    }
   ]
 }
