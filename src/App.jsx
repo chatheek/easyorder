@@ -15,7 +15,7 @@ import DevLayout from "./components/DevLayout";
 import SMELogin from "./pages/sme/SMELogin";
 import SMEDashboard from "./pages/sme/SMEDashboard";
 import DynamicManifest from "./components/DynamicManifest";
-import CustomerPortal from "./pages/CustomerPortal"; // Add this line
+import CustomerPortal from "./pages/CustomerPortal";
 
 // --- PROTECTED ROUTE COMPONENT (FOR DEVELOPER) ---
 const ProtectedDevRoute = ({ children }) => {
@@ -56,13 +56,10 @@ function App() {
       }
     });
 
-    // 2. PWA INSTALL LOGIC (Global Backup Strategy)
+    // 2. PWA INSTALL LOGIC
     const handleBeforeInstallPrompt = (e) => {
-      // Prevent the mini-infobar on mobile
       e.preventDefault();
-      // Save to React State
       setDeferredPrompt(e);
-      // Save to Window Object (Fixes the Desktop disappearing issue)
       window.deferredPrompt = e;
       console.log("✅ PWA: Install prompt captured and saved globally.");
     };
@@ -70,7 +67,6 @@ function App() {
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
     // 3. STANDALONE CHECK
-    // If the app is already launched as a PWA, hide the buttons
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setDeferredPrompt(null);
       window.deferredPrompt = null;
@@ -81,15 +77,16 @@ function App() {
       if (window.OneSignalInitialized) return;
 
       try {
-       await OneSignal.init({
-  appId: "42e5b71c-8a96-40c9-88c7-7268b2fe54e8",
-  allowLocalhostAsSecureOrigin: true,
-  serviceWorkerPath: "/OneSignalSDKWorker.js",
-  // 🚩 THIS LINE IS THE FIX
-  serviceWorkerParam: { scope: "/" }, 
-  notifyButton: { enable: false },
-});
+        await OneSignal.init({
+          appId: "42e5b71c-8a96-40c9-88c7-7268b2fe54e8",
+          allowLocalhostAsSecureOrigin: true,
+          serviceWorkerPath: "/OneSignalSDKWorker.js",
+          serviceWorkerParam: { scope: "/" }, 
+          notifyButton: { enable: false },
+        });
         
+        // 🚩 Critical: Assign to window so SMEDashboard can access the same instance
+        window.OneSignal = OneSignal; 
         window.OneSignalInitialized = true;
         console.log("🔔 OneSignal: Service Initialized");
       } catch (error) {
@@ -106,7 +103,7 @@ function App() {
     };
   }, []);
 
-  // 5. MANUAL INSTALL TRIGGER (Used by sub-components)
+  // 5. MANUAL INSTALL TRIGGER
   const handleInstallClick = async () => {
     const promptToUse = deferredPrompt || window.deferredPrompt;
     if (!promptToUse) return;
@@ -121,8 +118,6 @@ function App() {
     }
   };
 
-  // Reusable Component for Sub-pages
-  // Note: We pass the whole element as a prop so children can trigger it
   const renderSubPageInstallButton = (label) => (
     (deferredPrompt || window.deferredPrompt) ? (
       <button
@@ -186,13 +181,11 @@ function App() {
               </>
             } 
           />
+          
           <Route path="/:whatsapp" element={<CustomerPortal />} />
-
 
           {/* --- 404 CATCH-ALL --- */}
           <Route path="*" element={<Navigate to="/" />} />
-         
-
         </Routes>
       </div>
     </Router>
