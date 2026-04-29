@@ -107,33 +107,21 @@ useEffect(() => {
   const OneSignal = window.OneSignal || [];
 
   OneSignal.push(async () => {
-    try {
-      // 1. Just sync identity, don't re-init here
+  try {
+    // 🚩 Only login if the current OneSignal ID doesn't match our Business ID
+    const currentExternalId = OneSignal.User.externalId;
+    
+    if (currentExternalId !== bizData.id) {
+      console.log("🔄 Switching Identity to:", bizData.id);
       await OneSignal.login(bizData.id);
-      
-      let attempts = 0;
-      const checkBridge = async () => {
-        // This is the "magic" property. If this is null, the bridge is closed.
-        const pushId = OneSignal.User.PushSubscription.id;
-        
-        if (pushId) {
-          console.log("✅ [CP 5] Bridge Open! Syncing Tags...");
-          await OneSignal.User.addTag("business_id", bizData.id);
-          setIsSubscribed(true);
-        } else if (attempts < 10) {
-          attempts++;
-          console.log(`⏳ [CP 5.1] Bridge pending (Attempt ${attempts})...`);
-          setTimeout(checkBridge, 2000);
-        } else {
-          console.error("❌ [CP 6] Bridge Timeout: Verify Service-Worker-Allowed header.");
-        }
-      };
-
-      checkBridge();
-    } catch (err) {
-      console.error("Sync Error:", err);
     }
-  });
+
+    // Now proceed with the bridge check we wrote before...
+    checkBridge(); 
+  } catch (err) {
+    console.error("Sync Error:", err);
+  }
+});
 }, [bizData?.id]);
   const handleEnableNotifications = () => {
     if (window.OneSignal) {
