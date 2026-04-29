@@ -1,16 +1,23 @@
 {
   "version": 2,
-  "headers": [
+  "rewrites": [
     {
-      "source": "/OneSignalSDKWorker-v3.js",
-      "headers": [
-        { "key": "Content-Type", "value": "application/javascript" },
-        { "key": "Service-Worker-Allowed", "value": "/" }
-      ]
+      "source": "/OneSignalSDKWorker.js",
+      "destination": "/OneSignalSDKWorker.js"
+    },
+    {
+      "source": "/((?!OneSignalSDKWorker.js|assets|public).*)",
+      "destination": "/index.html"
     }
   ],
-  "rewrites": [
-    { "source": "/OneSignalSDKWorker-v3.js", "destination": "/OneSignalSDKWorker-v3.js" },
-    { "source": "/(.*)", "destination": "/index.html" }
+  "headers": [
+    {
+      "source": "/OneSignalSDKWorker.js",
+      "headers": [
+        { "key": "Content-Type", "value": "application/javascript" },
+        { "key": "Service-Worker-Allowed", "value": "/" },
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
   ]
 }
