@@ -85,12 +85,11 @@ function App() {
           appId: "42e5b71c-8a96-40c9-88c7-7268b2fe54e8",
           allowLocalhostAsSecureOrigin: true,
           serviceWorkerPath: "/OneSignalSDKWorker.js",
-          // 🚩 THIS LINE IS THE FIX
           serviceWorkerParam: { scope: "/" }, 
           notifyButton: { enable: false },
         });
         
-        // 🚩 Critical for SMEDashboard bridge
+        // 🚩 ADD THIS LINE: Exposes the instance to window for SMEDashboard
         window.OneSignal = OneSignal;
         
         window.OneSignalInitialized = true;
@@ -194,7 +193,7 @@ function App() {
 
           {/* --- 404 CATCH-ALL --- */}
           <Route path="*" element={<Navigate to="/" />} />
-          
+         
 
         </Routes>
       </div>
