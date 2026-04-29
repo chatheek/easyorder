@@ -101,28 +101,47 @@ export default function SMEDashboard({ installButton }) {
 
   // --- 🔔 ONESIGNAL LOGIC ---
 // --- 🔔 ONESIGNAL PUSH NOTIFICATION LOGIC ---
+// --- 🔔 ONESIGNAL PUSH NOTIFICATION LOGIC ---
 useEffect(() => {
   if (!bizData?.id) return;
 
   const OneSignal = window.OneSignal || [];
 
   OneSignal.push(async () => {
-  try {
-    // 🚩 Only login if the current OneSignal ID doesn't match our Business ID
-    const currentExternalId = OneSignal.User.externalId;
-    
-    if (currentExternalId !== bizData.id) {
-      console.log("🔄 Switching Identity to:", bizData.id);
+    try {
+      // 1. Sync identity
       await OneSignal.login(bizData.id);
-    }
+      
+      let attempts = 0;
 
-    // Now proceed with the bridge check we wrote before...
-    checkBridge(); 
-  } catch (err) {
-    console.error("Sync Error:", err);
-  }
-});
+      // Define function first
+      const checkBridge = async () => {
+        const pushId = OneSignal.User.PushSubscription.id;
+        
+        if (pushId) {
+          console.log("✅ [CP 5] Bridge Open! Syncing Tags...");
+          await OneSignal.User.addTag("business_id", bizData.id);
+          setIsSubscribed(true);
+        } else if (attempts < 10) {
+          attempts++;
+          console.log(`⏳ [CP 5.1] Bridge pending (Attempt ${attempts})...`);
+          setTimeout(checkBridge, 2000);
+        } else {
+          console.error("❌ [CP 6] Bridge Timeout: Verify Service-Worker-Allowed header.");
+        }
+      };
+
+      // Now call it
+      checkBridge();
+      
+    } catch (err) {
+      console.error("Sync Error:", err);
+    }
+  });
 }, [bizData?.id]);
+
+
+
   const handleEnableNotifications = () => {
     if (window.OneSignal) {
       window.OneSignal.push(() => {
