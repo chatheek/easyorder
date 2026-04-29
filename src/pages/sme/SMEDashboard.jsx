@@ -101,42 +101,54 @@ export default function SMEDashboard({ installButton }) {
 
   // --- 🔔 ONESIGNAL LOGIC ---
 // --- 🔔 ONESIGNAL PUSH NOTIFICATION LOGIC ---
-// --- 🔔 ONESIGNAL PUSH NOTIFICATION LOGIC ---
-  useEffect(() => {
-    if (!bizData?.id) return;
+useEffect(() => {
+  if (!bizData?.id) return;
 
-    // 🚩 CHANGE THIS LINE: Support both the array and the initialized object
-    const OneSignal = window.OneSignal || [];
+  const OneSignal = window.OneSignal || [];
 
-    // 🚩 WRAP THE PUSH: Only call .push if it's the loading array
-    const runLogic = async () => {
-      try {
-        await OneSignal.login(bizData.id);
+  const runSyncLogic = async () => {
+    try {
+      // 1. Identity Sync
+      await OneSignal.login(bizData.id);
+      
+      let attempts = 0;
+      const checkBridge = async () => {
+        const pushId = OneSignal.User.PushSubscription.id;
         
-        let attempts = 0;
-        const checkBridge = async () => {
-          const pushId = OneSignal.User.PushSubscription.id;
-          if (pushId) {
-            console.log("✅ [CP 5] Bridge Open! Syncing Tags...");
-            await OneSignal.User.addTag("business_id", bizData.id);
-            setIsSubscribed(true);
-          } else if (attempts < 10) {
-            attempts++;
-            setTimeout(checkBridge, 2000);
-          }
-        };
-        checkBridge();
-      } catch (err) {
-        console.error("Sync Error:", err);
-      }
-    };
-
-    if (Array.isArray(OneSignal)) {
-      OneSignal.push(runLogic);
-    } else {
-      runLogic();
+        if (pushId) {
+          console.log("✅ [CP 5] Bridge Open! Syncing Tags...");
+          await OneSignal.User.addTag("business_id", bizData.id);
+          setIsSubscribed(true);
+        } else if (attempts < 10) {
+          attempts++;
+          setTimeout(checkBridge, 2000);
+        }
+      };
+      checkBridge();
+    } catch (err) {
+      console.error("Sync Error:", err);
     }
-  }, [bizData?.id]);
+  };
+
+  // 🚩 The Fix: Only call .push if it's actually an array
+  if (Array.isArray(OneSignal)) {
+    OneSignal.push(runSyncLogic);
+  } else {
+    runSyncLogic();
+  }
+}, [bizData?.id]);
+
+// 🚩 Update your button handler too
+const handleEnableNotifications = () => {
+  const OS = window.OneSignal;
+  if (OS) {
+    if (Array.isArray(OS)) {
+      OS.push(() => OS.Notifications.requestPermission());
+    } else {
+      OS.Notifications.requestPermission();
+    }
+  }
+};
 
 
 
