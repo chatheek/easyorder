@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Clock, Calendar, Plus, Trash2, X, RefreshCw, 
   ToggleLeft, ToggleRight, CalendarOff, Coffee, Check,
-  Moon, Sun
+  Moon, Sun, Users, Hourglass, Save
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
@@ -11,10 +11,26 @@ export default function ScheduleTab({ bizData }) {
   const [exceptions, setExceptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  
+  // --- New Slot States ---
+  const [slotSettings, setSlotSettings] = useState({
+    session_duration: 30,
+    concurrent_slots: 1
+  });
+  const [updatingSlots, setUpdatingSlots] = useState(false);
 
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-  useEffect(() => { if (bizData?.id) fetchData(); }, [bizData?.id]);
+  useEffect(() => { 
+    if (bizData?.id) {
+      fetchData();
+      // Initialize slot settings from bizData
+      setSlotSettings({
+        session_duration: bizData.session_duration || 30,
+        concurrent_slots: bizData.concurrent_slots || 1
+      });
+    } 
+  }, [bizData?.id]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -29,8 +45,23 @@ export default function ScheduleTab({ bizData }) {
     }
   };
 
-  // --- REGULAR HOURS LOGIC ---
-  
+  // --- SLOT SETTINGS LOGIC ---
+  const handleUpdateSlotSettings = async () => {
+    setUpdatingSlots(true);
+    const { error } = await supabase
+      .from('businesses')
+      .update({
+        session_duration: parseInt(slotSettings.session_duration),
+        concurrent_slots: parseInt(slotSettings.concurrent_slots)
+      })
+      .eq('id', bizData.id);
+
+    if (error) alert("Failed to update settings");
+    else alert("Booking settings updated!");
+    setUpdatingSlots(false);
+  };
+
+  // --- REGULAR HOURS LOGIC (Keep existing) ---
   const addShift = async (dayIdx) => {
     const dayShifts = hours.filter(h => h.day_of_week === dayIdx);
     let nextOpen = "08:00:00";
@@ -60,18 +91,16 @@ export default function ScheduleTab({ bizData }) {
 
   const toggleDayClosed = async (dayIdx, isCurrentlyClosed) => {
     if (!isCurrentlyClosed) {
-      // Logic: To mark as closed, we delete all shifts for that day
-      if (window.confirm(`Mark ${days[dayIdx]} as closed whole day? This will remove existing shifts.`)) {
+      if (window.confirm(`Mark ${days[dayIdx]} as closed whole day?`)) {
         const { error } = await supabase.from('business_hours').delete().eq('business_id', bizData.id).eq('day_of_week', dayIdx);
         if (!error) setHours(prev => prev.filter(h => h.day_of_week !== dayIdx));
       }
     } else {
-      // Logic: To open, we just add a default shift
       addShift(dayIdx);
     }
   };
 
-  // --- EXCEPTIONS LOGIC ---
+  // --- EXCEPTIONS LOGIC (Keep existing) ---
   const [newEx, setNewEx] = useState({ date: '', allDay: false, from: '08:00', until: '17:00', reason: '' });
 
   const addException = async () => {
@@ -97,7 +126,70 @@ export default function ScheduleTab({ bizData }) {
   return (
     <div className="max-w-6xl mx-auto space-y-12 pb-24 px-2">
       
-      {/* REGULAR HOURS */}
+      {/* 🛠️ SLOT CONFIGURATION SECTION */}
+      <section className="space-y-6">
+        <div className="px-2">
+          <h2 className="text-3xl font-black text-slate-900 uppercase italic tracking-tighter">Booking Strategy</h2>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] italic">Define session lengths and capacity</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl flex flex-col justify-between space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 text-indigo-600">
+                <Hourglass size={24} />
+                <span className="font-black uppercase italic text-sm">Session Duration</span>
+              </div>
+              <div className="flex items-end gap-2">
+                <input 
+                  type="number" 
+                  value={slotSettings.session_duration}
+                  onChange={(e) => setSlotSettings({...slotSettings, session_duration: e.target.value})}
+                  className="w-24 text-4xl font-black text-slate-900 border-b-4 border-indigo-100 focus:border-indigo-500 outline-none transition-all"
+                />
+                <span className="font-black text-slate-400 uppercase text-xs mb-2 italic">Minutes</span>
+              </div>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
+                Time allocated per customer appointment.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl flex flex-col justify-between space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 text-emerald-500">
+                <Users size={24} />
+                <span className="font-black uppercase italic text-sm">Concurrent Capacity</span>
+              </div>
+              <div className="flex items-end gap-2">
+                <input 
+                  type="number" 
+                  value={slotSettings.concurrent_slots}
+                  onChange={(e) => setSlotSettings({...slotSettings, concurrent_slots: e.target.value})}
+                  className="w-24 text-4xl font-black text-slate-900 border-b-4 border-emerald-100 focus:border-emerald-500 outline-none transition-all"
+                />
+                <span className="font-black text-slate-400 uppercase text-xs mb-2 italic">Persons</span>
+              </div>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
+                How many customers can be served at the same time?
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center">
+            <button 
+              onClick={handleUpdateSlotSettings}
+              disabled={updatingSlots}
+              className="group bg-slate-900 hover:bg-indigo-600 text-white w-full h-full min-h-[150px] rounded-[3rem] transition-all duration-500 flex flex-col items-center justify-center gap-4 shadow-2xl active:scale-95"
+            >
+              {updatingSlots ? <RefreshCw className="animate-spin" /> : <Save className="group-hover:scale-125 transition-transform" />}
+              <span className="font-black uppercase italic text-xs tracking-[0.2em]">Save Strategy</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* REGULAR HOURS (Existing) */}
       <section className="space-y-6">
         <div className="px-2">
           <h2 className="text-3xl font-black text-slate-900 uppercase italic tracking-tighter">Operating Hours</h2>
@@ -167,7 +259,7 @@ export default function ScheduleTab({ bizData }) {
         </div>
       </section>
 
-      {/* EXCEPTIONS */}
+      {/* EXCEPTIONS (Existing) */}
       <section className="space-y-6">
         <div className="px-2">
           <h2 className="text-3xl font-black text-slate-900 uppercase italic tracking-tighter">Exceptions</h2>

@@ -284,3 +284,33 @@ ALTER TABLE public.orders
 ADD COLUMN IF NOT EXISTS is_favourite boolean DEFAULT false,
 ADD COLUMN IF NOT EXISTS internal_remarks text DEFAULT '',
 ADD COLUMN IF NOT EXISTS status_message text DEFAULT '';
+
+
+ALTER TABLE businesses 
+ADD COLUMN session_duration INT DEFAULT 30,
+ADD COLUMN concurrent_slots INT DEFAULT 1;
+
+
+
+=====
+
+
+CREATE TABLE appointments (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+  customer_name TEXT NOT NULL,
+  appointment_date DATE NOT NULL,
+  appointment_time TIME NOT NULL,
+  status TEXT DEFAULT 'pending', -- pending, confirmed, cancelled, completed
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Index for fast availability checking
+CREATE INDEX idx_appointments_lookup ON appointments(business_id, appointment_date, appointment_time);
+
+
+
+ALTER TABLE appointments 
+ADD COLUMN whatsapp_no TEXT,
+ADD COLUMN contact_no TEXT,
+ADD COLUMN remarks TEXT;

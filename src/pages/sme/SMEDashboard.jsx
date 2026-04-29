@@ -9,6 +9,8 @@ import OverviewTab from "../../components/sme/OverviewTab";
 import ProductsTab from "../../components/sme/ProductsTab";
 import OrdersTab from '../../components/sme/OrdersTab';
 import ScheduleTab from "../../components/sme/ScheduleTab";
+import AppointmentsTab from "../../components/sme/AppointmentsTab";
+
 
 export default function SMEDashboard({ installButton }) {
   const { whatsapp } = useParams();
@@ -241,6 +243,7 @@ const handleEnableNotifications = async () => {
         )}
 
         {activeTab === 'orders' && <OrdersTab bizData={bizData} />}
+        {activeTab === 'appointments' && <AppointmentsTab bizData={bizData} />}
       </main>
 
       {isMenuOpen && <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setIsMenuOpen(false)} />}

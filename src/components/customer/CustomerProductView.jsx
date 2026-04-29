@@ -49,14 +49,25 @@ export default function CustomerProductView({ bizData }) {
     setFilteredProducts(filtered);
   }, [searchQuery, products]);
 
+  // --- LOGIC: STOCK STATUS CHECK ---
+  const isActuallyOutOfStock = (product) => {
+    if (!product) return true;
+    return product.stock_status === 'out_of_stock' || product.available_stock <= 0;
+  };
+
   // --- LOGIC: SHARED STOCK & DECIMAL QUANTITY ---
   const getRemainingModalStock = () => {
     if (!viewingProduct) return 0;
+    // If status is out_of_stock, effective stock is 0
+    if (viewingProduct.stock_status === 'out_of_stock') return 0;
+    
     const usedInModal = Object.values(variationQtys).reduce((sum, q) => sum + parseFloat(q || 0), 0);
     return Math.max(0, viewingProduct.available_stock - usedInModal);
   };
 
   const handleQtyChange = (varId, value, isRelative = false) => {
+    if (isActuallyOutOfStock(viewingProduct)) return;
+
     const currentVal = parseFloat(variationQtys[varId] || 0);
     let newVal = isRelative ? currentVal + value : parseFloat(value);
     if (isNaN(newVal) || newVal < 0) newVal = 0;
@@ -73,6 +84,8 @@ export default function CustomerProductView({ bizData }) {
 
   // --- CART MANAGEMENT ---
   const addToCart = () => {
+    if (isActuallyOutOfStock(viewingProduct)) return;
+
     const entries = [];
     const vars = viewingProduct.product_variations || [];
     if (vars.length === 0) {
@@ -144,7 +157,6 @@ export default function CustomerProductView({ bizData }) {
 
   // --- REFINED WHATSAPP LINK FOR SRI LANKA ---
   const generateWhatsAppUrl = () => {
-    // Convert business number 07xxxxxxxx to 947xxxxxxxx
     const rawBizPhone = bizData.whatsapp.replace(/\D/g, '');
     const formattedBizPhone = rawBizPhone.startsWith('0') 
       ? `94${rawBizPhone.substring(1)}` 
@@ -172,27 +184,34 @@ export default function CustomerProductView({ bizData }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {filteredProducts.map(p => (
-              <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
-                <td className="p-5">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-100 shadow-inner">
-                      {p.images?.[0] ? <img src={p.images[0]} className="w-full h-full object-cover" /> : <ImageIcon className="m-auto text-slate-300" size={18}/>}
+            {filteredProducts.map(p => {
+              const outOfStock = isActuallyOutOfStock(p);
+              return (
+                <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="p-5">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-100 shadow-inner ${outOfStock ? 'grayscale opacity-50' : ''}`}>
+                        {p.images?.[0] ? <img src={p.images[0]} className="w-full h-full object-cover" alt={p.name} /> : <ImageIcon className="m-auto text-slate-300" size={18}/>}
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className={`text-xs font-black uppercase leading-none truncate max-w-[120px] md:max-w-xs ${outOfStock ? 'text-slate-400' : 'text-slate-800'}`}>{p.name}</p>
+                        {outOfStock ? (
+                          <span className="text-[8px] font-black bg-red-100 text-red-600 px-2 py-0.5 rounded-full uppercase tracking-tighter">Sold Out</span>
+                        ) : (
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">ID: {p.manual_id || 'N/A'}</p>
+                        )}
+                      </div>
                     </div>
-                    <div className="space-y-0.5">
-                      <p className="text-xs font-black text-slate-800 uppercase leading-none truncate max-w-[120px] md:max-w-xs">{p.name}</p>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">ID: {p.manual_id || 'N/A'}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="p-5 text-right font-black text-indigo-600 italic text-xs whitespace-nowrap">Rs.{p.unit_price}</td>
-                <td className="p-5 text-right">
-                  <button onClick={() => setViewingProduct(p)} className="p-3 bg-slate-900 text-white rounded-xl active:scale-90 transition-all flex items-center gap-2 ml-auto">
-                    <Eye size={14}/> <span className="text-[9px] font-black uppercase tracking-widest hidden md:inline">View</span>
-                  </button>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="p-5 text-right font-black text-indigo-600 italic text-xs whitespace-nowrap">Rs.{p.unit_price}</td>
+                  <td className="p-5 text-right">
+                    <button onClick={() => setViewingProduct(p)} className={`p-3 rounded-xl active:scale-90 transition-all flex items-center gap-2 ml-auto ${outOfStock ? 'bg-slate-200 text-slate-500' : 'bg-slate-900 text-white'}`}>
+                      <Eye size={14}/> <span className="text-[9px] font-black uppercase tracking-widest hidden md:inline">View</span>
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -202,9 +221,15 @@ export default function CustomerProductView({ bizData }) {
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/80 backdrop-blur-sm p-0 animate-in fade-in">
           <div className="bg-white w-full max-w-2xl rounded-t-[3rem] h-[90vh] overflow-y-auto no-scrollbar shadow-2xl">
             <div className="sticky top-0 z-10 p-6 flex justify-between items-center bg-white/95 backdrop-blur-md border-b border-slate-50">
-              <div className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest">
-                Stock: {getRemainingModalStock()} Available
-              </div>
+              {isActuallyOutOfStock(viewingProduct) ? (
+                <div className="px-4 py-1.5 bg-red-50 text-red-600 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                  <AlertCircle size={12} /> Out of Stock
+                </div>
+              ) : (
+                <div className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest">
+                  Stock: {getRemainingModalStock()} Available
+                </div>
+              )}
               <button onClick={() => { setViewingProduct(null); setVariationQtys({}); }} className="p-2 bg-slate-100 rounded-full text-slate-900"><X size={20}/></button>
             </div>
 
@@ -213,7 +238,7 @@ export default function CustomerProductView({ bizData }) {
               <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x pb-4">
                 {viewingProduct.images?.length > 0 ? viewingProduct.images.map((img, i) => (
                   <div key={i} className="min-w-[75%] aspect-[4/3] bg-slate-50 rounded-[2rem] overflow-hidden snap-center border border-slate-100 shadow-sm flex items-center justify-center">
-                    <img src={img} className="w-full h-full object-cover cursor-zoom-in active:scale-110 transition-transform" />
+                    <img src={img} className={`w-full h-full object-cover ${isActuallyOutOfStock(viewingProduct) ? 'grayscale opacity-60' : ''}`} alt="" />
                   </div>
                 )) : (
                   <div className="w-full aspect-[4/3] bg-slate-50 rounded-[2rem] flex items-center justify-center text-slate-300 border-2 border-dashed border-slate-100">
@@ -237,18 +262,36 @@ export default function CustomerProductView({ bizData }) {
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Configure Selection</h3>
                 {(viewingProduct.product_variations?.length > 0 ? viewingProduct.product_variations : [{id: 'base', variation_name: 'Standard Unit'}]).map(v => (
                   <div key={v.id} className="flex items-center justify-between p-5 bg-slate-50 rounded-3xl border border-slate-100">
-                    <p className="text-xs font-black text-slate-800 uppercase leading-none">{v.variation_name}</p>
+                    <p className={`text-xs font-black uppercase leading-none ${isActuallyOutOfStock(viewingProduct) ? 'text-slate-400' : 'text-slate-800'}`}>{v.variation_name}</p>
                     <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-2xl shadow-sm border border-slate-200">
                       <button onClick={() => handleQtyChange(v.id, -1, true)} className="p-2 text-slate-400 active:scale-75"><Minus size={14}/></button>
-                      <input type="number" step="0.1" value={variationQtys[v.id] || ''} onChange={(e) => handleQtyChange(v.id, e.target.value)} placeholder="0.0" className="w-16 text-center font-black text-sm outline-none bg-transparent" />
-                      <button onClick={() => handleQtyChange(v.id, 1, true)} disabled={getRemainingModalStock() <= 0} className="p-2 text-indigo-600 active:scale-75"><Plus size={14}/></button>
+                      <input 
+                        type="number" 
+                        step="0.1" 
+                        disabled={isActuallyOutOfStock(viewingProduct)}
+                        value={variationQtys[v.id] || ''} 
+                        onChange={(e) => handleQtyChange(v.id, e.target.value)} 
+                        placeholder="0.0" 
+                        className="w-16 text-center font-black text-sm outline-none bg-transparent" 
+                      />
+                      <button 
+                        onClick={() => handleQtyChange(v.id, 1, true)} 
+                        disabled={isActuallyOutOfStock(viewingProduct) || getRemainingModalStock() <= 0} 
+                        className={`p-2 active:scale-75 ${isActuallyOutOfStock(viewingProduct) ? 'text-slate-200' : 'text-indigo-600'}`}
+                      >
+                        <Plus size={14}/>
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <button onClick={addToCart} disabled={Object.values(variationQtys).every(q => !q || q === 0)} className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-xl disabled:opacity-20 active:scale-95 transition-all">
-                Add to Basket
+              <button 
+                onClick={addToCart} 
+                disabled={isActuallyOutOfStock(viewingProduct) || Object.values(variationQtys).every(q => !q || q === 0)} 
+                className="w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-xl disabled:bg-slate-100 disabled:text-slate-400 active:scale-95 transition-all"
+              >
+                {isActuallyOutOfStock(viewingProduct) ? 'Product Unavailable' : 'Add to Basket'}
               </button>
             </div>
           </div>
@@ -271,7 +314,7 @@ export default function CustomerProductView({ bizData }) {
                 <div key={item.cartId} className="flex items-center justify-between p-5 bg-white rounded-3xl border border-slate-100 shadow-sm">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border border-slate-50 shadow-inner">
-                      {item.images?.[0] ? <img src={item.images[0]} className="w-full h-full object-cover" /> : <Package className="m-auto text-slate-200" size={20}/>}
+                      {item.images?.[0] ? <img src={item.images[0]} className="w-full h-full object-cover" alt="" /> : <Package className="m-auto text-slate-200" size={20}/>}
                     </div>
                     <div>
                       <p className="text-xs font-black text-slate-800 uppercase leading-none">{item.name}</p>

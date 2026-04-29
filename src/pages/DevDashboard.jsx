@@ -4,7 +4,7 @@ import { usePWAInstall } from '../hooks/usePWAInstall';
 import { 
   Building2, Smartphone, User, MapPin, 
   Fingerprint, UploadCloud, CheckCircle2,
-  Info, Mail, Loader2, Download
+  Info, Mail, Loader2, Download, Briefcase, ChevronDown
 } from 'lucide-react';
 
 export default function DevDashboard() {
@@ -17,7 +17,7 @@ export default function DevDashboard() {
     regNo: '',
     whatsapp: '',
     contactPerson: '',
-    businessType: 'service',
+    businessType: 'service', // Default selection
     logo: null
   });
 
@@ -64,7 +64,7 @@ export default function DevDashboard() {
         reg_no: form.regNo || null,
         whatsapp: form.whatsapp,
         contact_person: form.contactPerson || null,
-        business_type: form.businessType,
+        business_type: form.businessType, // Correctly mapped to DB column
         logo_url: logoPath || null,
         monthly_subscription: 'N/A',
         total_due: 'N/A',
@@ -89,7 +89,6 @@ export default function DevDashboard() {
 
   return (
     <div className="p-4 md:p-10 max-w-5xl mx-auto pb-20">
-      {/* Responsive Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase italic">Onboarding</h1>
@@ -106,7 +105,6 @@ export default function DevDashboard() {
       </div>
 
       <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/60 border border-slate-100 overflow-hidden">
-        {/* Banner Section */}
         <div className="bg-slate-900 p-8 md:p-12 text-white relative overflow-hidden">
           <div className="relative z-10">
             <h3 className="text-2xl font-bold tracking-tight">Business Configuration</h3>
@@ -119,7 +117,6 @@ export default function DevDashboard() {
 
         <form onSubmit={handleOnboard} className="p-6 md:p-12 space-y-10 md:space-y-12">
           
-          {/* Identity Section */}
           <div className="space-y-6 md:space-y-8">
             <div className="flex items-center gap-3 text-indigo-600 font-black uppercase text-[10px] tracking-[0.2em]">
               <span className="w-8 h-px bg-indigo-100"></span> 01. Identity
@@ -138,6 +135,32 @@ export default function DevDashboard() {
                     className="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-semibold" placeholder="BRN-00X" />
                 </div>
               </div>
+
+              {/* Added Business Type Dropdown here */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Business Type *</label>
+                <div className="relative">
+                  <Briefcase className="absolute left-4 top-4 text-slate-300" size={18} />
+                  <select 
+                    name="businessType" 
+                    value={form.businessType} 
+                    onChange={handleInputChange}
+                    className="w-full pl-12 pr-10 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-semibold appearance-none cursor-pointer focus:ring-4 focus:ring-indigo-50 transition-all"
+                  >
+                    <option value="service">Service-Based (Appointments)</option>
+                    <option value="product">Product-Based (Orders)</option>
+                    <option value="both">Hybrid (Both)</option>
+                  </select>
+                  <ChevronDown className="absolute right-4 top-4 text-slate-400 pointer-events-none" size={18} />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 italic opacity-70">Contact Person</label>
+                <input type="text" name="contactPerson" value={form.contactPerson} onChange={handleInputChange}
+                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-semibold" placeholder="Owner Name" />
+              </div>
+
               <div className="md:col-span-2 space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 italic opacity-70">Address</label>
                 <div className="relative">
@@ -149,7 +172,6 @@ export default function DevDashboard() {
             </div>
           </div>
 
-          {/* Contact Section */}
           <div className="space-y-6 md:space-y-8">
             <div className="flex items-center gap-3 text-indigo-600 font-black uppercase text-[10px] tracking-[0.2em]">
               <span className="w-8 h-px bg-indigo-100"></span> 02. Credentials
@@ -165,24 +187,9 @@ export default function DevDashboard() {
                 <input type="text" name="whatsapp" value={form.whatsapp} onChange={handleInputChange} required inputMode="tel"
                   className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-semibold" placeholder="07xxxxxxxx" />
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 italic opacity-70">Contact Person</label>
-                <input type="text" name="contactPerson" value={form.contactPerson} onChange={handleInputChange}
-                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-semibold" placeholder="Owner Name" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Business Nature *</label>
-                <select name="businessType" value={form.businessType} onChange={handleInputChange}
-                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none cursor-pointer font-semibold appearance-none">
-                  <option value="service">Service-Based</option>
-                  <option value="product">Product-Based</option>
-                  <option value="both">Both</option>
-                </select>
-              </div>
             </div>
           </div>
 
-          {/* Branding Section */}
           <div className="space-y-6 md:space-y-8">
             <div className="flex items-center gap-3 text-indigo-600 font-black uppercase text-[10px] tracking-[0.2em]">
               <span className="w-8 h-px bg-indigo-100"></span> 03. Branding
@@ -197,7 +204,6 @@ export default function DevDashboard() {
             </div>
           </div>
 
-          {/* Mobile Optimized Action Button */}
           <button 
             type="submit" 
             disabled={loading}
