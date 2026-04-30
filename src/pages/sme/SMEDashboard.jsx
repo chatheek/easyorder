@@ -11,7 +11,6 @@ import OrdersTab from '../../components/sme/OrdersTab';
 import ScheduleTab from "../../components/sme/ScheduleTab";
 import AppointmentsTab from "../../components/sme/AppointmentsTab";
 
-
 export default function SMEDashboard({ installButton }) {
   const { whatsapp } = useParams();
   const navigate = useNavigate();
@@ -26,7 +25,7 @@ export default function SMEDashboard({ installButton }) {
   const [showPassword, setShowPassword] = useState(false);
   const [updatingPass, setUpdatingPass] = useState(false);
 
-  // --- 🛠️ HANDLERS (Defined early to prevent ReferenceErrors) ---
+  // --- 🛠️ HANDLERS ---
   const fetchMyBusiness = async () => {
     try {
       setLoading(true);
@@ -102,74 +101,50 @@ export default function SMEDashboard({ installButton }) {
   };
 
   // --- 🔔 ONESIGNAL LOGIC ---
-// --- 🔔 ONESIGNAL PUSH NOTIFICATION LOGIC ---
-useEffect(() => {
-  console.log("🔄 [Bridge 1] UseEffect Triggered. BizData ID:", bizData?.id);
-  if (!bizData?.id) return;
+  useEffect(() => {
+    if (!bizData?.id) return;
 
-  const OS = window.OneSignal || [];
+    const OS = window.OneSignal || [];
 
-  const runSyncLogic = async () => {
+    const runSyncLogic = async () => {
+      try {
+        await OS.login(bizData.id);
+        
+        let attempts = 0;
+        const checkBridge = async () => {
+          const pushId = OS.User?.PushSubscription?.id;
+          
+          if (pushId) {
+            await OS.User.addTag("business_id", bizData.id);
+            setIsSubscribed(true);
+          } else if (attempts < 10) {
+            attempts++;
+            setTimeout(checkBridge, 2000);
+          }
+        };
+        checkBridge();
+      } catch (err) {
+        console.error("OneSignal sync failed:", err);
+      }
+    };
+
+    if (Array.isArray(OS)) {
+      OS.push(runSyncLogic);
+    } else {
+      runSyncLogic();
+    }
+  }, [bizData?.id]);
+
+  const handleEnableNotifications = async () => {
+    const OS = window.OneSignal;
+    if (!OS || Array.isArray(OS) || !OS.Notifications) return;
+
     try {
-      console.log("🔄 [Bridge 2] Running Sync Logic. Calling Login...");
-      await OS.login(bizData.id);
-      console.log("🔄 [Bridge 3] Login successful for:", bizData.id);
-      
-      let attempts = 0;
-      const checkBridge = async () => {
-        console.log(`🔄 [Bridge 4] Checking Subscription state (Attempt ${attempts})...`);
-        
-        // Detailed log of the User object
-        console.log("🔄 [Bridge 4.1] Current User Object:", OS.User);
-
-        const pushId = OS.User?.PushSubscription?.id;
-        
-        if (pushId) {
-          console.log("✅ [Bridge 5] SUCCESS: Bridge Open! Push ID:", pushId);
-          await OS.User.addTag("business_id", bizData.id);
-          console.log("✅ [Bridge 6] Tag synced successfully.");
-          setIsSubscribed(true);
-        } else if (attempts < 10) {
-          attempts++;
-          setTimeout(checkBridge, 2000);
-        } else {
-          console.error("❌ [Bridge 7] TIMEOUT: No Push ID found. Check Service Worker tab.");
-        }
-      };
-      checkBridge();
+      await OS.Notifications.requestPermission();
     } catch (err) {
-      console.error("❌ [Bridge Error] Sync failed:", err);
+      console.error("Permission request crashed:", err);
     }
   };
-
-  if (Array.isArray(OS)) {
-    console.log("🔄 [Bridge 1.1] OS is an Array. Pushing logic to queue...");
-    OS.push(runSyncLogic);
-  } else {
-    console.log("🔄 [Bridge 1.2] OS is already initialized. Running logic immediately.");
-    runSyncLogic();
-  }
-}, [bizData?.id]);
-
-const handleEnableNotifications = async () => {
-  console.log("🖱️ [Click] Enable Notifications button clicked.");
-  const OS = window.OneSignal;
-  
-  if (!OS || Array.isArray(OS) || !OS.Notifications) {
-    console.error("❌ [Click Error] OneSignal object is hollow or missing Notifications namespace.");
-    return;
-  }
-
-  try {
-    console.log("🖱️ [Click 2] Requesting Permission...");
-    await OS.Notifications.requestPermission();
-    console.log("🖱️ [Click 3] Permission request triggered.");
-  } catch (err) {
-    console.error("❌ [Click Error] Permission request crashed:", err);
-  }
-};
-
-
 
   useEffect(() => { 
     fetchMyBusiness(); 
@@ -184,12 +159,23 @@ const handleEnableNotifications = async () => {
   if (!bizData) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans">
-      {/* Mobile Header */}
-      <div className="md:hidden flex items-center justify-between p-4 bg-slate-900 text-white sticky top-0 z-50">
-        <h2 className="text-xl font-black text-indigo-400 italic">EASYORDER</h2>
-        <button onClick={() => setIsMenuOpen(!isMenuOpen)}>
-          {isMenuOpen ? <X size={28} /> : <Menu size={28} />}
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans relative">
+      
+      {/* 
+          MOBILE HEADER
+          z-[80] keeps it strictly above sidebar and overlay.
+      */}
+      <div className="md:hidden flex items-center justify-between p-5 bg-slate-900 text-white sticky top-0 z-[80] shadow-xl">
+        <div className="flex flex-col">
+          <h2 className="text-xl font-black text-indigo-400 italic leading-none uppercase">EasyOrder</h2>
+          <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1">Admin Portal</span>
+        </div>
+        
+        <button 
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="p-3 bg-slate-800 rounded-2xl active:scale-90 transition-all border border-slate-700"
+        >
+          {isMenuOpen ? <X size={24} className="text-indigo-400" /> : <Menu size={24} />}
         </button>
       </div>
 
@@ -203,50 +189,64 @@ const handleEnableNotifications = async () => {
         installButton={installButton}
       />
 
-      <main className="flex-1 p-4 md:p-10 overflow-x-hidden">
-        {/* 🔔 Notification Alert Bar - Only shows if not subscribed */}
+      {/* 
+          MAIN CONTENT AREA 
+          md:ml-72 offsets the fixed sidebar width on desktop.
+      */}
+      <main className="flex-1 p-4 md:p-10 md:ml-72 min-h-screen overflow-x-hidden">
+        
+        {/* 🔔 Notification Alert Bar */}
         {!isSubscribed && (
-          <div className="mb-6 p-4 bg-indigo-600 rounded-2xl flex items-center justify-between text-white shadow-lg">
+          <div className="mb-6 p-4 bg-indigo-600 rounded-2xl flex items-center justify-between text-white shadow-lg animate-in fade-in slide-in-from-top-4 duration-500">
             <div className="flex items-center gap-3">
               <Bell className="animate-bounce" size={20} />
               <div>
-                <p className="text-xs font-black uppercase tracking-widest">Orders Alerts Disabled</p>
+                <p className="text-xs font-black uppercase tracking-widest">Order Alerts Disabled</p>
                 <p className="text-[10px] opacity-80">Enable notifications to receive live order alerts.</p>
               </div>
             </div>
             <button 
               onClick={handleEnableNotifications}
-              className="bg-white text-indigo-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+              className="bg-white text-indigo-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-sm hover:bg-slate-50"
             >
               Enable Now
             </button>
           </div>
         )}
 
-        {activeTab === 'dashboard' && (
-          <OverviewTab 
-            bizData={bizData} 
-            setBizData={setBizData}
-            handleUpdateDetails={handleUpdateDetails}
-            handlePasswordReset={handlePasswordReset}
-            handleLogoUpdate={handleLogoUpdate}
-            securityState={{ newPassword, setNewPassword, showPassword, setShowPassword, updatingPass }}
-          />
-        )}
-        
-        {activeTab === 'products' && bizData?.id && (
-          <ProductsTab bizData={bizData} />
-        )}
-        
-        {activeTab === 'schedule' && bizData?.id && (
-          <ScheduleTab bizData={bizData} />
-        )}
+        {/* Tab Content */}
+        <div className="animate-in fade-in duration-500">
+          {activeTab === 'dashboard' && (
+            <OverviewTab 
+              bizData={bizData} 
+              setBizData={setBizData}
+              handleUpdateDetails={handleUpdateDetails}
+              handlePasswordReset={handlePasswordReset}
+              handleLogoUpdate={handleLogoUpdate}
+              securityState={{ newPassword, setNewPassword, showPassword, setShowPassword, updatingPass }}
+            />
+          )}
+          
+          {activeTab === 'products' && bizData?.id && (
+            <ProductsTab bizData={bizData} />
+          )}
+          
+          {activeTab === 'schedule' && bizData?.id && (
+            <ScheduleTab bizData={bizData} />
+          )}
 
-        {activeTab === 'orders' && <OrdersTab bizData={bizData} />}
-        {activeTab === 'appointments' && <AppointmentsTab bizData={bizData} />}
+          {activeTab === 'orders' && <OrdersTab bizData={bizData} />}
+          {activeTab === 'appointments' && <AppointmentsTab bizData={bizData} />}
+        </div>
       </main>
 
-      {isMenuOpen && <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setIsMenuOpen(false)} />}
+      {/* Global Mobile Overlay for Sidebar */}
+      {isMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-[55] md:hidden backdrop-blur-sm" 
+          onClick={() => setIsMenuOpen(false)} 
+        />
+      )}
     </div>
   );
 }

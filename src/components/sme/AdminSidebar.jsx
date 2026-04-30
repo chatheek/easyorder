@@ -32,19 +32,16 @@ export default function AdminSidebar({
     };
   }, [activeTab]);
 
-  // --- DYNAMIC MENU FILTERING LOGIC ---
   const getMenuItems = () => {
     const baseItems = [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     ];
 
-    // 1. Handle PRODUCT related tabs
     if (businessType === 'product' || businessType === 'both') {
       baseItems.push({ id: 'orders', label: 'Orders', icon: ShoppingBag });
       baseItems.push({ id: 'products', label: 'Inventory', icon: Package });
     }
 
-    // 2. Handle SERVICE related tabs
     if (businessType === 'service' || businessType === 'both') {
       baseItems.push({ id: 'appointments', label: 'Appointments', icon: CheckCircle2 });
       baseItems.push({ id: 'schedule', label: 'Schedule', icon: CalendarClock });
@@ -73,12 +70,16 @@ export default function AdminSidebar({
     <>
       <aside className={`
         fixed inset-y-0 left-0 z-[60] w-72 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out
-        md:relative md:translate-x-0 h-screen overflow-hidden flex flex-col
+        md:translate-x-0 h-screen overflow-hidden flex flex-col
         ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        {/* FIXED HEADER */}
-        <div className="p-6 pt-10 md:pt-6">
-          <div className="flex items-center justify-between mb-2">
+        
+        {/* 
+            DESKTOP HEADER SECTION
+            Remains visible only on desktop.
+        */}
+        <div className="hidden md:block p-8 shrink-0">
+          <div className="flex items-center justify-between">
             <div className="space-y-1">
               <h1 className="text-2xl font-black text-indigo-400 italic tracking-tighter uppercase leading-none">
                 EasyOrder
@@ -87,11 +88,15 @@ export default function AdminSidebar({
                 {businessType === 'both' ? 'Hybrid' : businessType} Admin
               </p>
             </div>
-            <button onClick={() => setIsMenuOpen(false)} className="md:hidden p-2 bg-slate-800 rounded-xl text-slate-400">
-              <X size={20} />
-            </button>
           </div>
         </div>
+
+        {/* 
+            🚩 MOBILE TOP SPACER 
+            Increased to h-24 to ensure the "Main Menu" label starts 
+            well below the sticky Dashboard header.
+        */}
+        <div className="md:hidden h-24 shrink-0" />
 
         {/* SCROLLABLE NAV AREA */}
         <nav className="flex-1 px-6 space-y-2 overflow-y-auto no-scrollbar pt-4 pb-10"> 
@@ -114,7 +119,7 @@ export default function AdminSidebar({
         </nav>
 
         {/* FIXED FOOTER */}
-        <div className="p-6 border-t border-slate-800 space-y-3 bg-slate-900">
+        <div className="p-6 border-t border-slate-800 space-y-3 bg-slate-900 shrink-0">
           {showInstall && (
             <button 
               onClick={handleInstallClick}
@@ -138,8 +143,12 @@ export default function AdminSidebar({
         </div>
       </aside>
 
+      {/* Background Overlay */}
       {isMenuOpen && (
-        <div className="fixed inset-0 bg-black/60 z-[55] md:hidden backdrop-blur-sm" onClick={() => setIsMenuOpen(false)} />
+        <div 
+          className="fixed inset-0 bg-black/60 z-[55] md:hidden backdrop-blur-sm" 
+          onClick={() => setIsMenuOpen(false)} 
+        />
       )}
     </>
   );
