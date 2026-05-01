@@ -15,6 +15,7 @@ import DevLogin from "./pages/DevLogin";
 import DevLayout from "./components/DevLayout";
 import SMELogin from "./pages/sme/SMELogin";
 import SMEDashboard from "./pages/sme/SMEDashboard";
+import SMEResetPassword from "./pages/sme/SMEResetPassword";
 import DynamicManifest from "./components/DynamicManifest";
 import CustomerPortal from "./pages/CustomerPortal";
 
@@ -254,6 +255,11 @@ function App() {
               </CustomerRouteGuard>
             } 
           />
+
+          <Route 
+  path="/:whatsapp/admin/reset-password" 
+  element={<SMEResetPassword />} 
+/>
 
           {/* --- 404 CATCH-ALL --- */}
           <Route path="*" element={<Navigate to="/" />} />

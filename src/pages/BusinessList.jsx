@@ -133,7 +133,6 @@ export default function BusinessList() {
                 </div>
                 <div>
                    <p className="font-black uppercase italic text-slate-900 leading-none">{biz.name}</p>
-                   {/* 🚩 Instant Edit Business Type Dropdown for Mobile */}
                    <div className="relative mt-1">
                       <select 
                         value={biz.business_type}
@@ -172,31 +171,26 @@ export default function BusinessList() {
               </div>
             </div>
 
-            <div className="space-y-1 pt-2 border-t border-slate-50">
-               <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Address</p>
-               <StaticField value={biz.address} icon={MapPin} />
-            </div>
-
-            <div className="bg-slate-50 p-5 rounded-[1.5rem] grid grid-cols-2 gap-4 border border-slate-100">
+            <div className="bg-slate-50 p-6 rounded-[2rem] grid grid-cols-2 gap-x-6 gap-y-5 border border-slate-100">
                <div className="col-span-2 flex items-center justify-between border-b border-slate-200 pb-2 mb-1">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1"><AlignLeft size={12}/> Remarks</span>
                   <div className="flex-1 ml-4"><InlineField biz={biz} field="remarks" placeholder="Add notes..." /></div>
                </div>
                <div>
                  <p className="text-[8px] font-black text-slate-400 uppercase">Monthly Fee</p>
-                 <p className="text-xs font-black text-slate-700">Rs.{biz.monthly_subscription}</p>
+                 <InlineField biz={biz} field="monthly_subscription" />
                </div>
                <div>
                  <p className="text-[8px] font-black text-red-400 uppercase">Total Due</p>
-                 <p className="text-xs font-black text-red-600 italic">Rs.{biz.total_due}</p>
+                 <InlineField biz={biz} field="total_due" />
                </div>
-               <div>
+               <div className="col-span-1">
                  <p className="text-[8px] font-black text-slate-400 uppercase">Start Date</p>
-                 <p className="text-xs font-bold text-slate-600">{biz.subscription_start_date || '—'}</p>
+                 <InlineField biz={biz} field="subscription_start_date" type="date" />
                </div>
-               <div>
+               <div className="col-span-1">
                  <p className="text-[8px] font-black text-indigo-400 uppercase">Next Pay</p>
-                 <p className="text-xs font-black text-indigo-600 underline">{biz.next_payment_date}</p>
+                 <InlineField biz={biz} field="next_payment_date" type="date" />
                </div>
             </div>
           </div>
@@ -234,7 +228,6 @@ export default function BusinessList() {
                     </div>
                   </td>
                   <td className="p-8">
-                    {/* 🚩 Instant Edit Business Type Dropdown for Desktop */}
                     <div className="relative flex justify-center">
                       <select 
                         value={biz.business_type}
@@ -263,7 +256,8 @@ export default function BusinessList() {
                     </button>
                   </td>
                   <td className="p-8">
-                    <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 grid grid-cols-2 gap-x-6 gap-y-3">
+                    {/* 🚩 DESKTOP: Increased width and internal spacing for Metrics box */}
+                    <div className="bg-slate-50/50 p-6 rounded-[1.5rem] border border-slate-100 grid grid-cols-2 gap-x-10 gap-y-4 min-w-[380px]">
                        <div className="space-y-1">
                           <p className="text-[8px] font-black text-slate-400 uppercase">Monthly</p>
                           <InlineField biz={biz} field="monthly_subscription" />
@@ -272,9 +266,9 @@ export default function BusinessList() {
                           <p className="text-[8px] font-black text-red-400 uppercase">Total Due</p>
                           <InlineField biz={biz} field="total_due" />
                        </div>
-                       <div className="space-y-1 text-slate-400 opacity-60">
-                          <p className="text-[8px] font-black uppercase">Start Date</p>
-                          <p className="text-[11px] font-bold px-1">{biz.subscription_start_date || '—'}</p>
+                       <div className="space-y-1">
+                          <p className="text-[8px] font-black text-slate-400 uppercase">Start Date</p>
+                          <InlineField biz={biz} field="subscription_start_date" type="date" />
                        </div>
                        <div className="space-y-1 text-indigo-600">
                           <p className="text-[8px] font-black text-indigo-400 uppercase">Next Pay</p>
@@ -297,12 +291,12 @@ export default function BusinessList() {
         </div>
       </div>
 
-      {/* 🚀 CONFIRMATION POPUP */}
+      {/* Confirmation Popup */}
       {pendingUpdate && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center space-y-6">
             <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto shadow-inner ${pendingUpdate.field === 'is_paused' ? 'bg-amber-100 text-amber-600' : 'bg-indigo-100 text-indigo-600'}`}>
-               {pendingUpdate.field === 'is_paused' ? <AlertTriangle size={32}/> : <Check size={32}/>}
+                {pendingUpdate.field === 'is_paused' ? <AlertTriangle size={32}/> : <Check size={32}/>}
             </div>
             <div>
                <h3 className="text-xl font-black uppercase italic tracking-tighter">
@@ -312,7 +306,7 @@ export default function BusinessList() {
                  {pendingUpdate.field === 'is_paused' ? 'This will affect merchant portal access' : `Set ${pendingUpdate.field.replace('_', ' ')} to:`}
                </p>
                {pendingUpdate.field !== 'is_paused' && (
-                 <div className="mt-3 p-3 bg-slate-50 rounded-xl font-black text-indigo-600 italic border border-slate-100 break-words">"{pendingUpdate.value.toUpperCase()}"</div>
+                 <div className="mt-3 p-3 bg-slate-50 rounded-xl font-black text-indigo-600 italic border border-slate-100 break-words">"{String(pendingUpdate.value).toUpperCase()}"</div>
                )}
             </div>
             <div className="flex gap-3">
@@ -323,7 +317,7 @@ export default function BusinessList() {
         </div>
       )}
 
-      {/* 🚀 MASTER EDIT MODAL */}
+      {/* Master Edit Modal */}
       {fullEditBiz && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 animate-in zoom-in-95">
            <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col h-full max-h-[90vh]">
@@ -380,7 +374,6 @@ export default function BusinessList() {
                       />
                     </div>
                   ))}
-                  {/* Master Edit Business Type */}
                   <div className="space-y-1.5">
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-3">Business Type</label>
                     <select 

@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { 
   Lock, Mail, ShieldCheck, AlertCircle, 
-  Loader2, ChevronLeft, Eye, EyeOff 
+  Loader2, ChevronLeft, Eye, EyeOff, CheckCircle2 
 } from 'lucide-react';
 
 export default function SMELogin() {
@@ -12,14 +12,17 @@ export default function SMELogin() {
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // Password toggle state
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false); // Reset specific loading
   const [errorMsg, setErrorMsg] = useState(null);
+  const [successMsg, setSuccessMsg] = useState(null); // Feedback for reset email
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg(null);
+    setSuccessMsg(null);
 
     try {
       const { data: business, error: bizError } = await supabase
@@ -51,9 +54,47 @@ export default function SMELogin() {
     }
   };
 
+  // --- 🔑 PASSWORD RESET HANDLER ---
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setErrorMsg("Please enter your admin email first.");
+      return;
+    }
+
+    setResetLoading(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    try {
+      // 1. Verify this email belongs to this specific business portal
+      const { data: business } = await supabase
+        .from('businesses')
+        .select('id')
+        .eq('whatsapp', whatsapp)
+        .eq('email', email.trim())
+        .maybeSingle();
+
+      if (!business) {
+        throw new Error("This email is not registered for this business portal.");
+      }
+
+      // 2. Trigger Supabase Reset Flow
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/${whatsapp}/admin/reset-password`,
+      });
+
+      if (error) throw error;
+
+      setSuccessMsg("Reset link sent! Check your inbox.");
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4 md:p-6 relative">
-      {/* --- BACK TO HOME --- */}
       <Link 
         to="/" 
         className="absolute top-6 left-6 flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors text-xs font-black uppercase tracking-widest active:scale-95"
@@ -63,7 +104,6 @@ export default function SMELogin() {
 
       <div className="max-w-md w-full bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-2xl shadow-slate-200/50 p-8 md:p-10 border border-slate-100">
         
-        {/* Branding Area */}
         <div className="text-center mb-8 md:mb-10">
           <div className="w-16 h-16 md:w-20 md:h-20 bg-slate-900 rounded-3xl flex items-center justify-center mx-auto mb-4 md:mb-6 shadow-xl shadow-indigo-100 transform -rotate-3">
             <Lock className="text-indigo-400" size={32} />
@@ -76,18 +116,22 @@ export default function SMELogin() {
           </div>
         </div>
 
-        {/* Error Handling */}
+        {/* Status Messaging */}
         {errorMsg && (
           <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-2xl flex gap-3 items-start animate-shake">
             <AlertCircle className="text-red-500 shrink-0" size={18} />
-            <p className="text-[11px] text-red-800 font-bold leading-tight uppercase">
-              {errorMsg}
-            </p>
+            <p className="text-[11px] text-red-800 font-bold leading-tight uppercase">{errorMsg}</p>
+          </div>
+        )}
+
+        {successMsg && (
+          <div className="mb-6 p-4 bg-emerald-50 border-l-4 border-emerald-500 rounded-r-2xl flex gap-3 items-start animate-in fade-in">
+            <CheckCircle2 className="text-emerald-500 shrink-0" size={18} />
+            <p className="text-[11px] text-emerald-800 font-bold leading-tight uppercase">{successMsg}</p>
           </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-5 md:space-y-6">
-          {/* Email Input */}
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Admin Email</label>
             <div className="relative group">
@@ -104,9 +148,18 @@ export default function SMELogin() {
             </div>
           </div>
 
-          {/* Password Input with Eye Toggle */}
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Password</label>
+            <div className="flex justify-between items-center px-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Password</label>
+                <button 
+                  type="button"
+                  onClick={handleForgotPassword}
+                  disabled={resetLoading}
+                  className="text-[10px] font-black text-indigo-500 uppercase tracking-widest hover:text-indigo-700 disabled:text-slate-300"
+                >
+                  {resetLoading ? "Sending..." : "Forgot?"}
+                </button>
+            </div>
             <div className="relative group">
               <Lock className="absolute left-4 top-4 text-slate-300 group-focus-within:text-indigo-500 transition-colors" size={18} />
               <input 
