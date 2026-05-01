@@ -88,39 +88,44 @@ export default function SMEDashboard({ installButton }) {
     const OneSignal = window.OneSignal || [];
   
 
+
+
 const syncOneSignal = async () => {
   try {
     const OS = window.OneSignal;
     if (!OS) return;
 
+    // 1. Check browser permission
     const permission = await OS.Notifications.permission;
-    setIsSubscribed(permission === "granted");
+
+    // 2. We only hide the button if BOTH permission is granted AND we have a Push ID
+    const pushId = OS.User?.PushSubscription?.id;
+    setIsSubscribed(permission === "granted" && !!pushId);
 
     if (permission === "granted") {
       await OS.login(bizData.id);
 
-      // 🚩 THE "RETRY LOOP" FIX
       let attempts = 0;
-      const maxAttempts = 10;
+      const finalSync = async () => {
+        const currentPushId = OS.User?.PushSubscription?.id;
 
-      const applyTagWithRetry = async () => {
-        // Check if the push subscription actually has an ID yet
-        const pushId = OS.User?.PushSubscription?.id;
-
-        if (pushId) {
-          console.log("✅ Subscription found! Syncing tag...");
+        if (currentPushId) {
+          // 🚩 DEVICE IS FULLY REGISTERED NOW
           await OS.User.addTag("business_id", bizData.id);
-          setTagSynced(true); // This turns "Syncing..." into "Alerts Synced"
-        } else if (attempts < maxAttempts) {
+          setIsSubscribed(true); // Hide the button now
+          setTagSynced(true);     // Show the green "Synced" checkmark
+          console.log("✅ Mobile Fully Registered & Tagged");
+        } else if (attempts < 12) {
           attempts++;
-          console.log(`⏳ Subscription pending... attempt ${attempts}`);
-          setTimeout(applyTagWithRetry, 3000); // Wait 3 seconds and try again
-        } else {
-          console.error("❌ OneSignal failed to finalize subscription after 30s");
+          // Still waiting for mobile OS to provide the push token
+          setTimeout(finalSync, 2500); 
         }
       };
 
-      applyTagWithRetry();
+      finalSync();
+    } else {
+      // Permission was denied or not yet asked
+      setIsSubscribed(false);
     }
   } catch (err) {
     console.error("OS Sync Error:", err);
