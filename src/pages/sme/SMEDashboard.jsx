@@ -86,28 +86,48 @@ export default function SMEDashboard({ installButton }) {
   useEffect(() => {
     if (!bizData?.id) return;
     const OneSignal = window.OneSignal || [];
-    // Inside SMEDashboard.jsx
+  
 
 const syncOneSignal = async () => {
   try {
-    const OneSignal = window.OneSignal;
-    if (!OneSignal) return;
+    const OS = window.OneSignal;
+    if (!OS) return;
 
-    // 🚩 CHANGE: Check for explicit "granted" status
-    const permission = await OneSignal.Notifications.permission;
-    
-    // Only hide the button if they are actually subscribed
+    const permission = await OS.Notifications.permission;
     setIsSubscribed(permission === "granted");
 
     if (permission === "granted") {
-      await OneSignal.login(bizData.id);
-      await OneSignal.User.addTag("business_id", bizData.id);
-      setTagSynced(true);
+      await OS.login(bizData.id);
+
+      // 🚩 THE "RETRY LOOP" FIX
+      let attempts = 0;
+      const maxAttempts = 10;
+
+      const applyTagWithRetry = async () => {
+        // Check if the push subscription actually has an ID yet
+        const pushId = OS.User?.PushSubscription?.id;
+
+        if (pushId) {
+          console.log("✅ Subscription found! Syncing tag...");
+          await OS.User.addTag("business_id", bizData.id);
+          setTagSynced(true); // This turns "Syncing..." into "Alerts Synced"
+        } else if (attempts < maxAttempts) {
+          attempts++;
+          console.log(`⏳ Subscription pending... attempt ${attempts}`);
+          setTimeout(applyTagWithRetry, 3000); // Wait 3 seconds and try again
+        } else {
+          console.error("❌ OneSignal failed to finalize subscription after 30s");
+        }
+      };
+
+      applyTagWithRetry();
     }
   } catch (err) {
     console.error("OS Sync Error:", err);
   }
 };
+
+
     if (Array.isArray(OneSignal)) OneSignal.push(syncOneSignal);
     else syncOneSignal();
   }, [bizData?.id]);
