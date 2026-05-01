@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { RefreshCw, Menu, X, Bell } from 'lucide-react';
+import { 
+  RefreshCw, Menu, X, Bell 
+} from 'lucide-react';
 
 // Component Imports
 import AdminSidebar from "../../components/sme/AdminSidebar";
@@ -14,23 +16,32 @@ import AppointmentsTab from "../../components/sme/AppointmentsTab";
 export default function SMEDashboard({ installButton }) {
   const { whatsapp } = useParams();
   const navigate = useNavigate();
+
+  // --- UI STATES ---
   const [activeTab, setActiveTab] = useState('dashboard');
   const [bizData, setBizData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  
+  // --- 🔔 NOTIFICATION STATES ---
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [tagSynced, setTagSynced] = useState(false);
 
-  // Security Sub-states
+  // --- 🔒 SECURITY STATES ---
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [updatingPass, setUpdatingPass] = useState(false);
 
-  // --- 🛠️ HANDLERS ---
-  const fetchMyBusiness = async () => {
+  // --- 🛠️ DATA FETCHING ---
+  const fetchMyBusiness = useCallback(async () => {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { navigate(`/${whatsapp}/admin/login`); return; }
+      
+      if (!user) {
+        navigate(`/${whatsapp}/admin/login`);
+        return;
+      }
       
       const { data, error } = await supabase
         .from('businesses')
@@ -49,8 +60,55 @@ export default function SMEDashboard({ installButton }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [whatsapp, navigate]);
 
+  // --- 🔔 ONESIGNAL SYNC LOGIC ---
+  useEffect(() => {
+    if (!bizData?.id) return;
+
+    const OS = window.OneSignal || [];
+
+    const runSyncLogic = async () => {
+      try {
+        // Ensure user is logged in to OneSignal with their Business ID
+        await OS.login(bizData.id);
+        
+        let attempts = 0;
+        const checkConnection = async () => {
+          const pushId = OS.User?.PushSubscription?.id;
+          const permission = await OS.Notifications.permission;
+          
+          if (pushId && permission === "granted") {
+            // Device is fully registered and subscribed
+            await OS.User.addTag("business_id", bizData.id);
+            setIsSubscribed(true);
+            setTagSynced(true);
+            console.log("✅ OneSignal Fully Synced for Business:", bizData.id);
+          } else if (attempts < 15) {
+            // Keep checking (especially important for mobile/PWA wake-up)
+            attempts++;
+            setTimeout(checkConnection, 2000);
+          } else {
+            // Fallback: Check if permission is at least granted to update UI
+            setIsSubscribed(permission === "granted");
+            setTagSynced(false);
+          }
+        };
+
+        checkConnection();
+      } catch (err) {
+        console.error("OneSignal sync failed:", err);
+      }
+    };
+
+    if (Array.isArray(OS)) {
+      OS.push(runSyncLogic);
+    } else {
+      runSyncLogic();
+    }
+  }, [bizData?.id]);
+
+  // --- ⚙️ EVENT HANDLERS ---
   const handleUpdateDetails = async (e) => {
     e.preventDefault();
     if (!bizData) return;
@@ -64,17 +122,20 @@ export default function SMEDashboard({ installButton }) {
       .eq('id', bizData.id);
 
     if (error) alert("Update failed: " + error.message);
-    else alert("Business details updated!");
+    else alert("Business details updated successfully!");
   };
 
   const handlePasswordReset = async (e) => {
     e.preventDefault();
-    if (newPassword.length < 6) { alert("Min 6 characters required"); return; }
+    if (newPassword.length < 6) { 
+        alert("Password must be at least 6 characters."); 
+        return; 
+    }
     setUpdatingPass(true);
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) alert(error.message);
     else { 
-      alert("Password reset successfully!"); 
+      alert("Password updated successfully!"); 
       setNewPassword('');
     }
     setUpdatingPass(false);
@@ -90,7 +151,7 @@ export default function SMEDashboard({ installButton }) {
       .from('business-logos')
       .upload(fileName, file);
     
-    if (error) { alert("Upload failed"); return; }
+    if (error) { alert("Logo upload failed"); return; }
 
     const { error: dbError } = await supabase
       .from('businesses')
@@ -100,56 +161,11 @@ export default function SMEDashboard({ installButton }) {
     if (!dbError) fetchMyBusiness();
   };
 
-  // --- 🔔 ONESIGNAL LOGIC ---
-  useEffect(() => {
-    if (!bizData?.id) return;
-
-    const OS = window.OneSignal || [];
-
-    const runSyncLogic = async () => {
-      try {
-        await OS.login(bizData.id);
-        
-        let attempts = 0;
-        const checkBridge = async () => {
-          const pushId = OS.User?.PushSubscription?.id;
-          
-          if (pushId) {
-            await OS.User.addTag("business_id", bizData.id);
-            setIsSubscribed(true);
-          } else if (attempts < 10) {
-            attempts++;
-            setTimeout(checkBridge, 2000);
-          }
-        };
-        checkBridge();
-      } catch (err) {
-        console.error("OneSignal sync failed:", err);
-      }
-    };
-
-    if (Array.isArray(OS)) {
-      OS.push(runSyncLogic);
-    } else {
-      runSyncLogic();
-    }
-  }, [bizData?.id]);
-
-  const handleEnableNotifications = async () => {
-    const OS = window.OneSignal;
-    if (!OS || Array.isArray(OS) || !OS.Notifications) return;
-
-    try {
-      await OS.Notifications.requestPermission();
-    } catch (err) {
-      console.error("Permission request crashed:", err);
-    }
-  };
-
   useEffect(() => { 
     fetchMyBusiness(); 
-  }, [whatsapp]);
+  }, [fetchMyBusiness]);
 
+  // --- 🖥️ RENDER ---
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-slate-50">
       <RefreshCw className="animate-spin text-indigo-600" size={32} />
@@ -161,10 +177,7 @@ export default function SMEDashboard({ installButton }) {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans relative">
       
-      {/* 
-          MOBILE HEADER
-          z-[80] keeps it strictly above sidebar and overlay.
-      */}
+      {/* MOBILE HEADER */}
       <div className="md:hidden flex items-center justify-between p-5 bg-slate-900 text-white sticky top-0 z-[80] shadow-xl">
         <div className="flex flex-col">
           <h2 className="text-xl font-black text-indigo-400 italic leading-none uppercase">EasyOrder</h2>
@@ -189,32 +202,9 @@ export default function SMEDashboard({ installButton }) {
         installButton={installButton}
       />
 
-      {/* 
-          MAIN CONTENT AREA 
-          md:ml-72 offsets the fixed sidebar width on desktop.
-      */}
       <main className="flex-1 p-4 md:p-10 md:ml-72 min-h-screen overflow-x-hidden">
         
-        {/* 🔔 Notification Alert Bar */}
-        {!isSubscribed && (
-          <div className="mb-6 p-4 bg-indigo-600 rounded-2xl flex items-center justify-between text-white shadow-lg animate-in fade-in slide-in-from-top-4 duration-500">
-            <div className="flex items-center gap-3">
-              <Bell className="animate-bounce" size={20} />
-              <div>
-                <p className="text-xs font-black uppercase tracking-widest">Order Alerts Disabled</p>
-                <p className="text-[10px] opacity-80">Enable notifications to receive live order alerts.</p>
-              </div>
-            </div>
-            <button 
-              onClick={handleEnableNotifications}
-              className="bg-white text-indigo-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-sm hover:bg-slate-50"
-            >
-              Enable Now
-            </button>
-          </div>
-        )}
-
-        {/* Tab Content */}
+        {/* TAB CONTENT ROUTER */}
         <div className="animate-in fade-in duration-500">
           {activeTab === 'dashboard' && (
             <OverviewTab 
@@ -223,7 +213,15 @@ export default function SMEDashboard({ installButton }) {
               handleUpdateDetails={handleUpdateDetails}
               handlePasswordReset={handlePasswordReset}
               handleLogoUpdate={handleLogoUpdate}
-              securityState={{ newPassword, setNewPassword, showPassword, setShowPassword, updatingPass }}
+              securityState={{ 
+                newPassword, 
+                setNewPassword, 
+                showPassword, 
+                setShowPassword, 
+                updatingPass 
+              }}
+              isSubscribed={isSubscribed}
+              isSyncing={!tagSynced && isSubscribed}
             />
           )}
           
@@ -240,7 +238,7 @@ export default function SMEDashboard({ installButton }) {
         </div>
       </main>
 
-      {/* Global Mobile Overlay for Sidebar */}
+      {/* MOBILE OVERLAY */}
       {isMenuOpen && (
         <div 
           className="fixed inset-0 bg-black/60 z-[55] md:hidden backdrop-blur-sm" 
