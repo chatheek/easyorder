@@ -86,17 +86,28 @@ export default function SMEDashboard({ installButton }) {
   useEffect(() => {
     if (!bizData?.id) return;
     const OneSignal = window.OneSignal || [];
-    const syncOneSignal = async () => {
-      try {
-        const permission = await OneSignal.Notifications.permission;
-        setIsSubscribed(permission);
-        if (permission) {
-          await OneSignal.login(bizData.id);
-          await OneSignal.User.addTag("business_id", bizData.id);
-          setTagSynced(true);
-        }
-      } catch (err) { console.error(err); }
-    };
+    // Inside SMEDashboard.jsx
+
+const syncOneSignal = async () => {
+  try {
+    const OneSignal = window.OneSignal;
+    if (!OneSignal) return;
+
+    // 🚩 CHANGE: Check for explicit "granted" status
+    const permission = await OneSignal.Notifications.permission;
+    
+    // Only hide the button if they are actually subscribed
+    setIsSubscribed(permission === "granted");
+
+    if (permission === "granted") {
+      await OneSignal.login(bizData.id);
+      await OneSignal.User.addTag("business_id", bizData.id);
+      setTagSynced(true);
+    }
+  } catch (err) {
+    console.error("OS Sync Error:", err);
+  }
+};
     if (Array.isArray(OneSignal)) OneSignal.push(syncOneSignal);
     else syncOneSignal();
   }, [bizData?.id]);
