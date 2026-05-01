@@ -11,33 +11,27 @@ export default function OverviewTab({
   handlePasswordReset, 
   handleLogoUpdate, 
   securityState,
-  isSubscribed, // Ensure this is passed from SMEDashboard
-  isSyncing     // Ensure this is passed from SMEDashboard
+  isSubscribed, 
+  isSyncing 
 }) {
-  // 🚩 CRITICAL FIX: Guard against undefined securityState to prevent the crash
   if (!securityState) return null;
 
   const { newPassword, setNewPassword, showPassword, setShowPassword, updatingPass } = securityState;
   const formatBilling = (val) => (!val || val === 'N/A') ? <span className="text-amber-600 italic text-sm">Pending</span> : val;
 
-  // --- 🔔 REFINED NOTIFICATION HANDLER ---
   const onEnableClick = async () => {
-    if (!window.OneSignal) {
-      alert("Notification service is still loading...");
-      return;
-    }
-
-    try {
-      // In v16, this is the standard way to trigger the native prompt
+    if (window.OneSignal) {
       await window.OneSignal.Notifications.requestPermission();
-    } catch (err) {
-      console.error("Manual prompt failed:", err);
+    } else {
+      alert("Notification service is loading...");
     }
   };
 
+  // Fixed Label Component
   const Label = ({ icon: Icon, text }) => (
     <div className="flex items-center gap-1.5 mb-2 ml-1">
-      <Icon size="{12}" className="text-slate-400"/>
+      {/* 🚩 Fixed: size={12} (no quotes) and Icon is the component passed */}
+      <Icon size={12} className="text-slate-400" />
       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{text}</label>
     </div>
   );
@@ -45,13 +39,13 @@ export default function OverviewTab({
   return (
     <div className="space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
-      
+      {/* BILLING GRID */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         {[
-          { label: 'Monthly Sub', val: bizData.monthly_subscription, icon: <CreditCard size="{18}"/>, color: 'text-indigo-500' },
-          { label: 'Start Date', val: bizData.subscription_start_date, icon: <Calendar size="{18}"/>, color: 'text-indigo-500' },
-          { label: 'Total Due', val: bizData.total_due, icon: <Clock size="{18}"/>, color: 'text-red-500', bg: 'ring-2 ring-red-100 bg-red-50/30' },
-          { label: 'Next Payment', val: bizData.next_payment_date, icon: <Calendar size="{18}"/>, color: 'text-indigo-500' }
+          { label: 'Monthly Sub', val: bizData.monthly_subscription, icon: <CreditCard size={18}/>, color: 'text-indigo-500' },
+          { label: 'Start Date', val: bizData.subscription_start_date, icon: <Calendar size={18}/>, color: 'text-indigo-500' },
+          { label: 'Total Due', val: bizData.total_due, icon: <Clock size={18}/>, color: 'text-red-500', bg: 'ring-2 ring-red-100 bg-red-50/30' },
+          { label: 'Next Payment', val: bizData.next_payment_date, icon: <Calendar size={18}/>, color: 'text-indigo-500' }
         ].map((item, i) => (
           <div key={i} className={`bg-white p-4 md:p-5 rounded-[1.5rem] md:rounded-[2rem] shadow-sm border border-slate-100 flex flex-col gap-1 ${item.bg}`}>
             <div className={`flex items-center gap-2 ${item.color} mb-1`}>
@@ -66,29 +60,29 @@ export default function OverviewTab({
       <div className="flex flex-col lg:flex-row gap-6 md:gap-10">
         <div className="flex-1 space-y-6 md:space-y-8">
           
-          
           <form onSubmit={handleUpdateDetails} className="bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
             <div className="flex items-center justify-between pb-4 border-b border-slate-50">
               <h3 className="font-black text-slate-900 text-sm uppercase tracking-tighter italic">Business Profile</h3>
               <div className="flex items-center gap-1.5 bg-indigo-50 px-3 py-1 rounded-full">
-                <Briefcase size="{12}" className="text-indigo-600"/>
+                <Briefcase size={12} className="text-indigo-600" />
                 <span className="text-[10px] font-bold text-indigo-700 uppercase">{bizData.business_type}</span>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <div className="group">
-                <Label icon="{Activity}" text="Business Name"/>
+                {/* 🚩 Fixed: icon={Activity} (no quotes, no brackets) */}
+                <Label icon={Activity} text="Business Name" />
                 <input type="text" value={bizData.name || ''} onChange={e => setBizData({...bizData, name: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-semibold outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-200 transition-all" />
               </div>
 
               <div className="group">
-                <Label icon="{Hash}" text="Registration No"/>
+                <Label icon={Hash} text="Registration No" />
                 <input type="text" value={bizData.reg_no || ''} onChange={e => setBizData({...bizData, reg_no: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-semibold outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-200 transition-all" />
               </div>
 
               <div className="md:col-span-2 group">
-                <Label icon="{MapPin}" text="Official Address"/>
+                <Label icon={MapPin} text="Official Address" />
                 <textarea value={bizData.address || ''} onChange={e => setBizData({...bizData, address: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl h-24 font-semibold outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-200 transition-all resize-none" />
               </div>
             </div>
@@ -98,7 +92,7 @@ export default function OverviewTab({
             </button>
           </form>
 
-          
+          {/* NOTIFICATION BAR */}
           <div className={`p-6 md:p-10 rounded-[2.5rem] border transition-all duration-500 ${
             isSubscribed 
               ? "bg-white border-emerald-100 shadow-sm" 
@@ -107,7 +101,7 @@ export default function OverviewTab({
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="space-y-2">
                 <h3 className={`text-lg font-black italic flex items-center gap-2 uppercase tracking-tighter ${isSubscribed ? "text-emerald-600" : "text-white"}`}>
-                  {isSubscribed ? <CheckCircle size="{20}"/> : <BellRing size="{20}" className="animate-pulse"/>}
+                  {isSubscribed ? <CheckCircle size={20}/> : <BellRing size={20} className="animate-pulse" />}
                   {isSubscribed ? "Notifications Active" : "Enable Alerts"}
                 </h3>
                 <p className={`text-[11px] font-bold uppercase tracking-widest leading-relaxed ${isSubscribed ? "text-slate-400" : "text-indigo-100"}`}>
@@ -127,54 +121,52 @@ export default function OverviewTab({
                 }`}
               >
                 {isSyncing ? (
-                   <RefreshCw size="{14}" className="animate-spin"/>
+                   <RefreshCw size={14} className="animate-spin" />
                 ) : isSubscribed ? (
                   "Notification Enabled"
                 ) : (
                   <>
-                    <Bell size="{14}"/> Enable Alerts
+                    <Bell size={14} /> Enable Alerts
                   </>
                 )}
               </button>
             </div>
           </div>
 
-          
+          {/* SECURITY */}
           <div className="bg-slate-900 p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] text-white shadow-2xl shadow-slate-900/20">
             <h3 className="text-lg font-bold mb-6 italic flex items-center gap-2 uppercase tracking-tighter">
-              <Lock size="{20}" className="text-indigo-400"/> Security
+              <Lock size={20} className="text-indigo-400" /> Security
             </h3>
             <div className="relative mb-4">
               <input type={showPassword ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl outline-none focus:border-indigo-500 transition-colors" placeholder="New Password" />
               <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors">
-                {showPassword ? <EyeOff size="{18}"/> : <Eye size="{18}"/>}
+                {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
               </button>
             </div>
             <button onClick={handlePasswordReset} disabled={updatingPass} className="w-full md:w-auto px-10 py-4 bg-indigo-600 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg shadow-indigo-600/20">
-              {updatingPass ? <RefreshCw className="animate-spin" size="{14}"/> : <ShieldCheck size="{14}"/>} 
+              {updatingPass ? <RefreshCw className="animate-spin" size={14}/> : <ShieldCheck size={14}/>} 
               Change Account Password
             </button>
           </div>
         </div>
 
-        
+        {/* SIDEBAR INFO */}
         <div className="w-full lg:w-80 space-y-6">
-          
           <div className="bg-white p-6 rounded-[2rem] md:rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col items-center">
              <div className="relative group mb-8">
                 <div className="w-32 h-32 md:w-36 md:h-36 bg-slate-50 rounded-[3rem] border-4 border-white shadow-2xl overflow-hidden flex items-center justify-center">
                    {bizData.logo_url ? (
-                     <img src={`[https://qntcbkkwflxeyjvpkoro.supabase.co/storage/v1/object/public/business-logos/$](https://qntcbkkwflxeyjvpkoro.supabase.co/storage/v1/object/public/business-logos/$){bizData.logo_url}`} className="w-full h-full object-cover" alt="Logo" />
+                     <img src={`https://qntcbkkwflxeyjvpkoro.supabase.co/storage/v1/object/public/business-logos/${bizData.logo_url}`} className="w-full h-full object-cover" alt="Logo" />
                    ) : (
-                     <ImageIcon className="text-slate-200" size="{40}"/>
+                     <ImageIcon className="text-slate-200" size={40}/>
                    )}
                 </div>
                 <label className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 rounded-[3rem] flex items-center justify-center cursor-pointer transition-all">
                   <input type="file" className="hidden" onChange={handleLogoUpdate} /> 
-                  <Save size="{24}" className="text-white animate-bounce"/>
+                  <Save size={24} className="text-white animate-bounce" />
                 </label>
              </div>
-             
           </div>
         </div>
       </div>
