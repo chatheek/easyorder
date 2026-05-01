@@ -4,21 +4,18 @@ import {
   Info, Mail, User, Hash, MapPin, Briefcase, Bell, BellRing
 } from 'lucide-react';
 
-export default function OverviewTab({ bizData, setBizData, handleUpdateDetails, handlePasswordReset, handleLogoUpdate, securityState }) {
+export default function OverviewTab({ 
+  bizData, 
+  setBizData, 
+  handleUpdateDetails, 
+  handlePasswordReset, 
+  handleLogoUpdate, 
+  securityState,
+  isSubscribed, // 🚩 Received from Dashboard
+  handleEnableNotifications // 🚩 Received from Dashboard
+}) {
   const formatBilling = (val) => (!val || val === 'N/A') ? <span className="text-amber-600 italic text-sm">Pending</span> : val;
   const { newPassword, setNewPassword, showPassword, setShowPassword, updatingPass } = securityState;
-
-  // --- ONESIGNAL MANUAL PROMPT ---
-// In OverviewTab.jsx
-const handleEnableNotifications = () => {
-  // Use the native browser prompt instead of the slidedown
-  // This satisfies the "User Gesture" requirement
-  if (window.OneSignal) {
-    window.OneSignal.Notifications.requestPermission();
-  } else {
-    alert("Notification service is loading...");
-  }
-};
 
   const Label = ({ icon: Icon, text }) => (
     <div className="flex items-center gap-1.5 mb-2 ml-1">
@@ -83,25 +80,27 @@ const handleEnableNotifications = () => {
             </button>
           </form>
 
-          {/* NOTIFICATIONS SECTION - Added for OneSignal Fix */}
-          <div className="bg-indigo-600 p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] text-white shadow-xl shadow-indigo-200">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="space-y-2">
-                <h3 className="text-lg font-black italic flex items-center gap-2 uppercase tracking-tighter">
-                  <BellRing size={20} className="text-indigo-200" /> Notifications
-                </h3>
-                <p className="text-[11px] font-bold text-indigo-100 uppercase tracking-widest leading-relaxed">
-                  Get instant alerts for new orders. On iOS, you must "Add to Home Screen" first.
-                </p>
+          {/* 🚩 CONDITIONAL NOTIFICATIONS SECTION */}
+          {!isSubscribed && (
+            <div className="bg-indigo-600 p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] text-white shadow-xl shadow-indigo-200 animate-in zoom-in-95 duration-500">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-2">
+                  <h3 className="text-lg font-black italic flex items-center gap-2 uppercase tracking-tighter">
+                    <BellRing size={20} className="text-indigo-200" /> Notifications Disabled
+                  </h3>
+                  <p className="text-[11px] font-bold text-indigo-100 uppercase tracking-widest leading-relaxed">
+                    You aren't receiving live order alerts. Enable them to stay updated in real-time.
+                  </p>
+                </div>
+                <button 
+                  onClick={handleEnableNotifications}
+                  className="bg-white text-indigo-600 px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  <Bell size={14} /> Enable Alerts Now
+                </button>
               </div>
-              <button 
-                onClick={handleEnableNotifications}
-                className="bg-white text-indigo-600 px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
-              >
-                <Bell size={14} /> Enable Alerts
-              </button>
             </div>
-          </div>
+          )}
 
           {/* SECURITY SECTION */}
           <div className="bg-slate-900 p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] text-white shadow-2xl shadow-slate-900/20">
@@ -157,7 +156,7 @@ const handleEnableNotifications = () => {
           <div className="bg-amber-50 p-5 rounded-[2rem] border border-amber-100 flex gap-3 items-start shadow-sm">
              <Info size={18} className="text-amber-600 shrink-0 mt-0.5" />
              <p className="text-[10px] text-amber-800 font-bold leading-relaxed uppercase tracking-tight">
-                Contact Person and Email are fixed for security. To update these or billing cycles, please open a support ticket.
+               Contact Person and Email are fixed for security. To update these or billing cycles, please open a support ticket.
              </p>
           </div>
         </div>
