@@ -130,39 +130,24 @@ function App() {
 
     // 4. ONESIGNAL INITIALIZATION
     const initOneSignal = async () => {
-  if (window.OneSignalInitialized) return;
+      if (window.OneSignalInitialized) return;
 
-  try {
-    await OneSignal.init({
-      appId: "42e5b71c-8a96-40c9-88c7-7268b2fe54e8",
-      allowLocalhostAsSecureOrigin: true,
-      // 🚩 FIX: Use an absolute path (leading slash) to ensure 
-      // the worker is found regardless of the current URL subpath
-      serviceWorkerPath: "/OneSignalSDKWorker.js", 
-      serviceWorkerParam: { scope: "/" }, 
-      notifyButton: { enable: false },
-      // 🚩 ADD: Help the SDK identify the root origin
-      path: "/",
-    });
-
-    // Verify registration status
-    const registrations = await navigator.serviceWorker.getRegistrations();
-    const osWorker = registrations.find(r => r.active && r.active.scriptURL.includes('OneSignal'));
-    
-    if (osWorker) {
-      console.log("✅ OneSignal Service Worker is active.");
-    } else {
-      console.warn("⚠️ OneSignal SW not active. Ensure file is in /public/ folder.");
-    }
-
-    window.OneSignalInitialized = true;
-    console.log("🔔 OneSignal: Service Initialized");
-  } catch (error) {
-    if (error.message?.includes("already initialized")) return;
-    console.error("OneSignal Error:", error);
-  }
-};
-
+      try {
+        await OneSignal.init({
+          appId: "42e5b71c-8a96-40c9-88c7-7268b2fe54e8",
+          allowLocalhostAsSecureOrigin: true,
+          serviceWorkerPath: "/OneSignalSDKWorker.js",
+          serviceWorkerParam: { scope: "/" }, 
+          notifyButton: { enable: false },
+        });
+        
+        window.OneSignalInitialized = true;
+        console.log("🔔 OneSignal: Service Initialized");
+      } catch (error) {
+        if (error.message?.includes("already initialized")) return;
+        console.error("OneSignal Error:", error);
+      }
+    };
 
     initOneSignal();
 
