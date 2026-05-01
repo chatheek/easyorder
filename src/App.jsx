@@ -130,25 +130,34 @@ function App() {
 
     // 4. ONESIGNAL INITIALIZATION
     const initOneSignal = async () => {
-      if (window.OneSignalInitialized) return;
+  if (window.OneSignalInitialized) return;
 
-      try {
-        await OneSignal.init({
-          appId: "42e5b71c-8a96-40c9-88c7-7268b2fe54e8",
-          allowLocalhostAsSecureOrigin: true,
-          serviceWorkerPath: "/OneSignalSDKWorker.js",
-          serviceWorkerParam: { scope: "/" }, 
-          notifyButton: { enable: false },
-        });
-        
-        window.OneSignalInitialized = true;
-        console.log("🔔 OneSignal: Service Initialized");
-      } catch (error) {
-        if (error.message?.includes("already initialized")) return;
-        console.error("OneSignal Error:", error);
-      }
-    };
+  try {
+    await OneSignal.init({
+      appId: "42e5b71c-8a96-40c9-88c7-7268b2fe54e8",
+      allowLocalhostAsSecureOrigin: true,
+      // Change: Ensure no leading slash if your host treats it as relative, 
+      // or keep it if it's absolute. Most importantly, set the scope.
+      serviceWorkerPath: "OneSignalSDKWorker.js", 
+      serviceWorkerParam: { scope: "/" }, 
+      notifyButton: { enable: false },
+    });
+    
+    // Check if the worker is actually registered
+    const registration = await navigator.serviceWorker.getRegistration("/");
+    if (registration) {
+      console.log("✅ OneSignal Service Worker is registered at root scope.");
+    } else {
+      console.warn("⚠️ OneSignal Service Worker not found at root. Check public folder.");
+    }
 
+    window.OneSignalInitialized = true;
+    console.log("🔔 OneSignal: Service Initialized");
+  } catch (error) {
+    if (error.message?.includes("already initialized")) return;
+    console.error("OneSignal Error:", error);
+  }
+};
     initOneSignal();
 
     return () => {
