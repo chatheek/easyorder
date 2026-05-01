@@ -68,38 +68,37 @@ export default function SMEDashboard({ installButton }) {
 
     const OS = window.OneSignal || [];
 
-    const runSyncLogic = async () => {
-      try {
-        // Ensure user is logged in to OneSignal with their Business ID
-        await OS.login(bizData.id);
-        
-        let attempts = 0;
-        const checkConnection = async () => {
-          const pushId = OS.User?.PushSubscription?.id;
-          const permission = await OS.Notifications.permission;
-          
-          if (pushId && permission === "granted") {
-            // Device is fully registered and subscribed
-            await OS.User.addTag("business_id", bizData.id);
-            setIsSubscribed(true);
-            setTagSynced(true);
-            console.log("✅ OneSignal Fully Synced for Business:", bizData.id);
-          } else if (attempts < 15) {
-            // Keep checking (especially important for mobile/PWA wake-up)
-            attempts++;
-            setTimeout(checkConnection, 2000);
-          } else {
-            // Fallback: Check if permission is at least granted to update UI
-            setIsSubscribed(permission === "granted");
-            setTagSynced(false);
-          }
-        };
+    // Inside SMEDashboard.jsx useEffect
+const runSyncLogic = async () => {
+  try {
+    const permission = await OS.Notifications.permission;
+    
+    // 🚩 FIX: If permission is NOT granted, don't try to tag or login yet
+    if (permission !== "granted") {
+      setIsSubscribed(false);
+      return; 
+    }
 
-        checkConnection();
-      } catch (err) {
-        console.error("OneSignal sync failed:", err);
+    await OS.login(bizData.id);
+    
+    // Use a small delay or a check to ensure the subscription is ready
+    let attempts = 0;
+    const checkBridge = async () => {
+      const pushId = OS.User?.PushSubscription?.id;
+      
+      if (pushId) {
+        await OS.User.addTag("business_id", bizData.id);
+        setIsSubscribed(true);
+      } else if (attempts < 10) {
+        attempts++;
+        setTimeout(checkBridge, 1000); // Check every second for 10 seconds
       }
     };
+    checkBridge();
+  } catch (err) {
+    console.error("Sync failed:", err);
+  }
+};
 
     if (Array.isArray(OS)) {
       OS.push(runSyncLogic);

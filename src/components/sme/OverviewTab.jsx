@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   CreditCard, Calendar, Clock, Activity, Lock, Eye, 
   EyeOff, ShieldCheck, RefreshCw, ImageIcon, Save, 
-  Info, Mail, User, Hash, MapPin, Briefcase, Bell, BellRing, CheckCircle
+  Info, Mail, User, Hash, MapPin, Briefcase, Bell, BellRing, CheckCircle, ShieldAlert
 } from 'lucide-react';
 
 export default function OverviewTab({ 
@@ -16,7 +16,6 @@ export default function OverviewTab({
   isSyncing 
 }) {
   
-  // Guard clause to prevent destructuring errors if props aren't passed yet
   if (!securityState || !bizData) return null;
 
   const { newPassword, setNewPassword, showPassword, setShowPassword, updatingPass } = securityState;
@@ -25,16 +24,32 @@ export default function OverviewTab({
     <span className="text-amber-600 italic text-sm">Pending</span>
   ) : val;
 
-  // --- 🔔 ONESIGNAL MANUAL PROMPT ---
-  const onEnableNotifications = () => {
-    if (window.OneSignal) {
-      // Triggers native browser prompt (User Gesture compliant)
-      window.OneSignal.Notifications.requestPermission();
-    } else {
+  // --- 🔔 REFINED ONESIGNAL MANUAL PROMPT ---
+  const onEnableNotifications = async () => {
+    const OS = window.OneSignal;
+    if (!OS) {
       alert("Notification service is still loading...");
+      return;
+    }
+
+    try {
+      // 1. Trigger native prompt
+      await OS.Notifications.requestPermission();
+      
+      // 2. Defensive Check: If permission is granted but SDK is "stuck", force opt-in
+      const permission = await OS.Notifications.permission;
+      if (permission === "granted") {
+        if (OS.User && OS.User.PushSubscription) {
+          await OS.User.PushSubscription.optIn();
+          console.log("🚀 Opt-in forced for granted permission");
+        }
+      }
+    } catch (err) {
+      console.error("Manual prompt failed:", err);
     }
   };
 
+  // Fixed Label Component to prevent InvalidCharacterError
   const Label = ({ icon: Icon, text }) => (
     <div className="flex items-center gap-1.5 mb-2 ml-1">
       <Icon size={12} className="text-slate-400" />
@@ -208,16 +223,16 @@ export default function OverviewTab({
 
              <div className="w-full space-y-5 pt-6 border-t border-slate-50">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1 flex items-center gap-1.5"><User size={10} /> Contact Person</span>
-                  <p className="text-sm font-bold text-slate-600 italic">{bizData.contact_person || 'Not Set'}</p>
+                  <Label icon={User} text="Contact Person" />
+                  <p className="text-sm font-bold text-slate-600 italic ml-1">{bizData.contact_person || 'Not Set'}</p>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1 flex items-center gap-1.5"><Mail size={10} /> Admin Email</span>
-                  <p className="text-sm font-bold text-slate-600 break-all">{bizData.email || 'Not Set'}</p>
+                  <Label icon={Mail} text="Admin Email" />
+                  <p className="text-sm font-bold text-slate-600 break-all ml-1">{bizData.email || 'Not Set'}</p>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1 flex items-center gap-1.5"><Activity size={10} /> WhatsApp Identity</span>
-                  <p className="text-sm font-bold text-slate-600">{bizData.whatsapp}</p>
+                  <Label icon={Activity} text="WhatsApp Identity" />
+                  <p className="text-sm font-bold text-slate-600 ml-1">{bizData.whatsapp}</p>
                 </div>
              </div>
           </div>

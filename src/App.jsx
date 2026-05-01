@@ -136,19 +136,23 @@ function App() {
     await OneSignal.init({
       appId: "42e5b71c-8a96-40c9-88c7-7268b2fe54e8",
       allowLocalhostAsSecureOrigin: true,
-      // Change: Ensure no leading slash if your host treats it as relative, 
-      // or keep it if it's absolute. Most importantly, set the scope.
-      serviceWorkerPath: "OneSignalSDKWorker.js", 
+      // 🚩 FIX: Use an absolute path (leading slash) to ensure 
+      // the worker is found regardless of the current URL subpath
+      serviceWorkerPath: "/OneSignalSDKWorker.js", 
       serviceWorkerParam: { scope: "/" }, 
       notifyButton: { enable: false },
+      // 🚩 ADD: Help the SDK identify the root origin
+      path: "/",
     });
+
+    // Verify registration status
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    const osWorker = registrations.find(r => r.active && r.active.scriptURL.includes('OneSignal'));
     
-    // Check if the worker is actually registered
-    const registration = await navigator.serviceWorker.getRegistration("/");
-    if (registration) {
-      console.log("✅ OneSignal Service Worker is registered at root scope.");
+    if (osWorker) {
+      console.log("✅ OneSignal Service Worker is active.");
     } else {
-      console.warn("⚠️ OneSignal Service Worker not found at root. Check public folder.");
+      console.warn("⚠️ OneSignal SW not active. Ensure file is in /public/ folder.");
     }
 
     window.OneSignalInitialized = true;
@@ -158,6 +162,7 @@ function App() {
     console.error("OneSignal Error:", error);
   }
 };
+
 
     initOneSignal();
 
